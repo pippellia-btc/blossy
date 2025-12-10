@@ -1,2 +1,3 @@
-# blossom
-Blossom library in go
+# Bloomy
+
+A framework for building super custom blossom servers.
