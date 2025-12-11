@@ -32,9 +32,9 @@ func (e *Error) Is(target error) bool {
 	return e.Code == err.Code && e.Reason == err.Reason
 }
 
-// Set the error in the http response. If the reason is non-empty,
+// Write the error to the http response. If the reason is non-empty,
 // it writes it to the "X-Reason" header as per BUD-01.
-func (e Error) Set(w http.ResponseWriter) {
+func (e Error) Write(w http.ResponseWriter) {
 	if e.Reason != "" {
 		w.Header().Set("X-Reason", e.Reason)
 	}
