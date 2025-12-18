@@ -1,4 +1,4 @@
-package blossom
+package blossy
 
 import "log/slog"
 
