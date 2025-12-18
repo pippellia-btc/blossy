@@ -1,3 +1,3 @@
-# Bloomy
+# Blossy
 
-A framework for building super custom blossom servers.
+Blossy is a go framework for building super custom blossom servers.
