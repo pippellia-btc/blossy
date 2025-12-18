@@ -1,6 +1,11 @@
 package blossy
 
-import "log/slog"
+import (
+	"io"
+	"log/slog"
+
+	"github.com/pippellia-btc/blossom"
+)
 
 // Hooks of the blossom server, that the user of this framework can configure.
 type Hooks struct {
@@ -34,21 +39,21 @@ func (s *slice[T]) Clear() {
 }
 
 type RejectHooks struct {
-	// Get is invoked before processing a GET /<sha256>.<ext> request.
-	Get slice[func(request Request, hash, ext string) *Error]
+	// Get is invoked before processing a GET /<hash>.<ext> request.
+	Get slice[func(Request, blossom.Hash, string) *blossom.Error]
 
-	// Check is invoked before processing a HEAD /<sha256>.<ext> request.
-	Check slice[func(request Request, hash, ext string) *Error]
+	// Check is invoked before processing a HEAD /<hash>.<ext> request.
+	Check slice[func(Request, blossom.Hash, string) *blossom.Error]
 }
 
 type OnHooks struct {
 	// Get handles the core logic for GET /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
-	Get func(request Request, hash, ext string) (blob Blob, err *Error)
+	Get func(Request, blossom.Hash, string) (blob io.ReadSeekCloser, err *blossom.Error)
 
 	// Check handles the core logic for HEAD /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
-	Check func(request Request, hash, ext string) (mime string, size int64, err *Error)
+	Check func(Request, blossom.Hash, string) (mime string, size int64, err *blossom.Error)
 }
 
 func NewOnHooks() OnHooks {
@@ -58,12 +63,12 @@ func NewOnHooks() OnHooks {
 	}
 }
 
-func logGet(request Request, hash, ext string) (Blob, *Error) {
-	slog.Info("received GET request", "hash", hash, "extention", ext, "ip", request.IP().Group())
-	return Blob{}, &Error{Code: 404, Reason: "The GET hook is not configured"}
+func logGet(r Request, h blossom.Hash, ext string) (io.ReadSeekCloser, *blossom.Error) {
+	slog.Info("received GET request", "hash", h, "extention", ext, "ip", r.IP().Group())
+	return nil, &blossom.Error{Code: 404, Reason: "The GET hook is not configured"}
 }
 
-func logCheck(request Request, hash, ext string) (mime string, size int64, err *Error) {
-	slog.Info("received GET request", "hash", hash, "extention", ext, "ip", request.IP().Group())
-	return "", 0, &Error{Code: 404, Reason: "The GET hook is not configured"}
+func logCheck(r Request, h blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
+	slog.Info("received GET request", "hash", h, "extention", ext, "ip", r.IP().Group())
+	return "", 0, &blossom.Error{Code: 404, Reason: "The GET hook is not configured"}
 }

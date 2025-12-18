@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"github.com/pippellia-btc/blossom"
 )
 
 type Server struct {
@@ -70,7 +72,6 @@ func (s *Server) StartAndServe(ctx context.Context, address string) error {
 	case <-ctx.Done():
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-
 		return server.Shutdown(ctx)
 
 	case err := <-exitErr:
@@ -84,10 +85,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case r.Method == http.MethodGet:
-		s.handleGet(w, r)
+		s.HandleGet(w, r)
 
 	case r.Method == http.MethodHead:
-		s.handleCheck(w, r)
+		s.HandleCheck(w, r)
 
 	case r.Method == http.MethodOptions:
 		w.WriteHeader(http.StatusOK)
@@ -97,55 +98,57 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleGet handles the GET /<sha256>.<ext> endpoint.
-func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
+// HandleGet handles the GET /<sha256>.<ext> endpoint.
+func (s *Server) HandleGet(w http.ResponseWriter, r *http.Request) {
 	request, err := parseBlobRequest(r)
 	if err != nil {
-		err.Write(w)
+		blossom.WriteError(w, *err)
 		return
 	}
 
 	for _, reject := range s.Reject.Get {
 		err = reject(request, request.hash, request.ext)
 		if err != nil {
-			err.Write(w)
+			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	blob, err := s.On.Get(request, request.hash, request.ext)
+	data, err := s.On.Get(request, request.hash, request.ext)
 	if err != nil {
-		err.Write(w)
+		blossom.WriteError(w, *err)
 		return
 	}
 
-	if err := blob.Write(w); err != nil {
+	blob := blossom.Blob{Data: data}
+	if err := blossom.WriteBlob(w, blob); err != nil {
 		s.log.Error("failure in GET /<sha256>", "error", err)
 	}
 }
 
-// handleCheck handles the HEAD /<sha256>.<ext> endpoint.
-func (s *Server) handleCheck(w http.ResponseWriter, r *http.Request) {
+// HandleCheck handles the HEAD /<sha256>.<ext> endpoint.
+func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
 	request, err := parseBlobRequest(r)
 	if err != nil {
-		err.Write(w)
+		blossom.WriteError(w, *err)
 		return
 	}
 
 	for _, reject := range s.Reject.Check {
 		err = reject(request, request.hash, request.ext)
 		if err != nil {
-			err.Write(w)
+			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
 	mime, size, err := s.On.Check(request, request.hash, request.ext)
 	if err != nil {
-		err.Write(w)
+		blossom.WriteError(w, *err)
 		return
 	}
 
 	w.Header().Set("Content-Type", mime)
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	w.Header().Set("Accept-Ranges", "bytes")
 }

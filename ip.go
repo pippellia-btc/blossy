@@ -55,9 +55,9 @@ func (ip IP) IsLoopback() bool { return ip.Raw.IsLoopback() }
 func (ip IP) String() string { return ip.Raw.String() }
 
 // GetIP returns the IP address of the http request.
-// It parses the extracted IP string into the custom rely.IP wrapper struct.
+// It parses the extracted IP string into the custom blossy.IP wrapper struct.
 //
-// IMPORTANT: This function assumes the relay is behind a trusted reverse proxy.
+// IMPORTANT: This function assumes the server is behind a trusted reverse proxy.
 // If this is not the case, clients can easily spoof the IP headers (True-Client-IP, X-Real-IP).
 func GetIP(r *http.Request) IP {
 	ip := getIP(r)

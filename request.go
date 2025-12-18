@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+
+	"github.com/pippellia-btc/blossom"
 )
 
 type Request interface {
@@ -19,7 +21,7 @@ type Request interface {
 	Pubkey() string
 
 	// IsAuthed returns whether the request has a valid authorization event.
-	// It's a shorter version for Request.Pubkey() != "".
+	// It's a shorter version of Request.Pubkey() != "".
 	IsAuthed() bool
 
 	// Context returns the context of the underlying [http.Request].
@@ -45,19 +47,19 @@ func (r request) Raw() *http.Request       { return r.raw }
 
 type blobRequest struct {
 	request
-	hash string
+	hash blossom.Hash
 	ext  string
 }
 
-func parseBlobRequest(r *http.Request) (blobRequest, *Error) {
+func parseBlobRequest(r *http.Request) (blobRequest, *blossom.Error) {
 	hash, ext, err := ParseHash(r.URL.Path)
 	if err != nil {
-		return blobRequest{}, &Error{Code: http.StatusBadRequest, Reason: err.Error()}
+		return blobRequest{}, &blossom.Error{Code: http.StatusBadRequest, Reason: err.Error()}
 	}
 
 	pubkey, err := parsePubkey(r.Header, VerbGet, hash)
 	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
-		return blobRequest{}, &Error{Code: http.StatusUnauthorized, Reason: err.Error()}
+		return blobRequest{}, &blossom.Error{Code: http.StatusUnauthorized, Reason: err.Error()}
 	}
 
 	request := blobRequest{

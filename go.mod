@@ -4,7 +4,10 @@ go 1.24.1
 
 toolchain go1.24.11
 
-require github.com/nbd-wtf/go-nostr v0.51.8
+require (
+	github.com/nbd-wtf/go-nostr v0.51.8
+	github.com/pippellia-btc/blossom v0.2.0
+)
 
 require (
 	github.com/ImVexed/fasturl v0.0.0-20230304231329-4e41488060f3 // indirect

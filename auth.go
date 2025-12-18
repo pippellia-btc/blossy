@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
+	"github.com/pippellia-btc/blossom"
 )
 
 const KindAuth = 24242
@@ -48,7 +49,7 @@ var (
 // parsePubkey from the authentication event in the header.
 // If the 'Authorization' header is not present, it returns [ErrAuthMissingHeader].
 // If the 'Authorization' header contains an in invalid authentication event, it returns the specific error.
-func parsePubkey(header http.Header, verb Verb, hash string) (string, error) {
+func parsePubkey(header http.Header, verb Verb, hash blossom.Hash) (string, error) {
 	event, err := parseAuth(header)
 	if err != nil {
 		return "", err
@@ -60,7 +61,9 @@ func parsePubkey(header http.Header, verb Verb, hash string) (string, error) {
 	return event.PubKey, nil
 }
 
-func validateAuth(event *nostr.Event, verb Verb, hash string) error {
+// ValidateAuth validates the authentication event against the expected verb and hash.
+// This (correct) implementation of the protocol is not secure. See https://github.com/hzrd149/blossom/pull/87
+func validateAuth(event *nostr.Event, verb Verb, hash blossom.Hash) error {
 	if event.Kind != KindAuth {
 		return ErrAuthInvalidKind
 	}
@@ -90,13 +93,13 @@ func validateAuth(event *nostr.Event, verb Verb, hash string) error {
 		return fmt.Errorf("%w: expected '%s', got '%s'", ErrAuthInvalidVerbTag, verb, tTag)
 	}
 
-	if hash != "" {
+	if hash.Hex() != "" {
 		// empty hash means don't check the 'x' tags
 		xTags := allTags(event, "x")
 		if len(xTags) == 0 {
 			return ErrAuthMissingXTag
 		}
-		if !slices.Contains(xTags, hash) {
+		if !slices.Contains(xTags, hash.Hex()) {
 			return fmt.Errorf("%w: missing %s", ErrAuthInvalidXTag, hash)
 		}
 	}

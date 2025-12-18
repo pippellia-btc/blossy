@@ -1,37 +1,25 @@
 package blossy
 
 import (
-	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
-)
 
-const (
-	HashLength = 64
-)
-
-var (
-	HashRegexp = regexp.MustCompile(`[a-fA-F0-9]{64}`)
+	"github.com/pippellia-btc/blossom"
 )
 
 // ParseHash extracts the SHA256 hash from URL path.
 // Supports both /<sha256> and /<sha256>.<ext> formats.
-func ParseHash(path string) (hash string, ext string, err error) {
+func ParseHash(path string) (hash blossom.Hash, ext string, err error) {
 	path = strings.TrimPrefix(path, "/")
 	parts := strings.SplitN(path, ".", 2) // separate hash from extention
 
-	hash = parts[0]
+	hash, err = blossom.ParseHash(parts[0])
+	if err != nil {
+		return blossom.Hash{}, "", err
+	}
+
 	if len(parts) > 1 {
-		ext = "." + parts[1]
-	}
-
-	if len(hash) != HashLength {
-		return "", "", fmt.Errorf("invalid hash lenght: %d", len(hash))
-	}
-
-	if !HashRegexp.MatchString(hash) {
-		return "", "", fmt.Errorf("invalid hash: %s", hash)
+		ext = parts[1]
 	}
 	return hash, ext, nil
 }

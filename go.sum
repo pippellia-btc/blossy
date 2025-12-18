@@ -40,6 +40,10 @@ github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9G
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
 github.com/nbd-wtf/go-nostr v0.51.8 h1:CIoS+YqChcm4e1L1rfMZ3/mIwTz4CwApM2qx7MHNzmE=
 github.com/nbd-wtf/go-nostr v0.51.8/go.mod h1:d6+DfvMWYG5pA3dmNMBJd6WCHVDDhkXbHqvfljf0Gzg=
+github.com/pippellia-btc/blossom v0.1.1 h1:MkAYMd9ou351rgDfN+Baj7IMxOY2QIgeUoyrmUXIcVI=
+github.com/pippellia-btc/blossom v0.1.1/go.mod h1:0FK415GivYBfOJambaAhg1FZkDB5cep/skpP01hfAnc=
+github.com/pippellia-btc/blossom v0.2.0 h1:SppqA7bn+0O8h6Kjo8hC4W1jGrS/gg1q0jvgFmzryTw=
+github.com/pippellia-btc/blossom v0.2.0/go.mod h1:0FK415GivYBfOJambaAhg1FZkDB5cep/skpP01hfAnc=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/puzpuzpuz/xsync/v3 v3.5.1 h1:GJYJZwO6IdxN/IKbneznS6yPkVC+c3zyY/j19c++5Fg=
