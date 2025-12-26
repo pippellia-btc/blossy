@@ -85,6 +85,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	SetCORS(w)
 
 	switch {
+	case r.URL.Path == "/upload" && r.Method == http.MethodPut:
+		s.HandleUpload(w, r)
+
+	case r.URL.Path == "/upload" && r.Method == http.MethodHead:
+		s.HandleUploadCheck(w, r)
+
 	case r.Method == http.MethodGet:
 		s.HandleFetchBlob(w, r)
 
@@ -188,6 +194,24 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(descriptor); err != nil {
 		s.log.Error("failed to encode blob descriptor", "error", err, "hash", meta.Hash)
 	}
+}
+
+// HandleUploadCheck handles the HEAD /upload endpoint.
+func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
+	request, err := parseUploadCheck(r)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	for _, reject := range s.Reject.Upload {
+		err = reject(request, request.hints)
+		if err != nil {
+			blossom.WriteError(w, *err)
+			return
+		}
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // SetCORS sets CORS headers as required by BUD-01.

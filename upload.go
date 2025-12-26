@@ -10,9 +10,9 @@ type UploadHints struct {
 	// If unknown, it will be the zero value.
 	Hash blossom.Hash
 
-	// MIME is the MIME type of the uploaded blob.
+	// Type is the content type of the uploaded blob.
 	// If unknown, it will be an empty string.
-	MIME string
+	Type string
 
 	// Size is the size in bytes of the uploaded blob.
 	// If unknown, it will be -1.
