@@ -152,3 +152,13 @@ func (s *Server) HandleFetchMeta(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	w.Header().Set("Accept-Ranges", "bytes")
 }
+
+// SetCORS sets CORS headers as required by BUD-01.
+func SetCORS(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization, *")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers")
+}
