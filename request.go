@@ -163,6 +163,33 @@ func parseUploadCheck(r *http.Request) (uploadRequest, *blossom.Error) {
 	return request, nil
 }
 
+type deleteRequest struct {
+	request
+	hash blossom.Hash
+}
+
+func parseDelete(r *http.Request) (deleteRequest, *blossom.Error) {
+	hash, _, err := ParseHash(r.URL.Path)
+	if err != nil {
+		return deleteRequest{}, &blossom.Error{Code: http.StatusBadRequest, Reason: err.Error()}
+	}
+
+	pubkey, err := parsePubkey(r.Header, VerbDelete, hash)
+	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
+		return deleteRequest{}, &blossom.Error{Code: http.StatusUnauthorized, Reason: err.Error()}
+	}
+
+	request := deleteRequest{
+		request: request{
+			ip:     GetIP(r),
+			pubkey: pubkey,
+			raw:    r,
+		},
+		hash: hash,
+	}
+	return request, nil
+}
+
 // ParseHash extracts the SHA256 hash from URL path.
 // Supports both /<sha256> and /<sha256>.<ext> formats.
 func ParseHash(path string) (hash blossom.Hash, ext string, err error) {

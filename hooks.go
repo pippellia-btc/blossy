@@ -50,6 +50,10 @@ type RejectHooks struct {
 	// Upload is invoked when processing the HEAD /upload and before processing
 	// every PUT /upload request. If any of the hooks returns a non-nil error, the request is rejected.
 	Upload slice[func(r Request, hints UploadHints) *blossom.Error]
+
+	// Delete is invoked before processing a DELETE /<hash> request.
+	// If any of the hooks returns a non-nil error, the request is rejected, which means the blob won't be deleted.
+	Delete slice[func(r Request, hash blossom.Hash) *blossom.Error]
 }
 
 type OnHooks struct {
@@ -64,12 +68,18 @@ type OnHooks struct {
 	// Upload handles the core logic for PUT /upload as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/02.md
 	Upload func(r Request, hints UploadHints, body io.ReadCloser) (blossom.BlobMeta, *blossom.Error)
+
+	// Delete handles the core logic for DELETE /<sha256> as per BUD-02.
+	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/02.md
+	Delete func(r Request, hash blossom.Hash) *blossom.Error
 }
 
 func NewOnHooks() OnHooks {
 	return OnHooks{
 		FetchBlob: logFetchBlob,
 		FetchMeta: logFetchMeta,
+		Upload:    logUpload,
+		Delete:    logDelete,
 	}
 }
 
@@ -81,4 +91,14 @@ func logFetchBlob(r Request, h blossom.Hash, ext string) (io.ReadSeekCloser, *bl
 func logFetchMeta(r Request, h blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
 	slog.Info("received HEAD request", "hash", h, "extention", ext, "ip", r.IP().Group())
 	return "", 0, &blossom.Error{Code: 404, Reason: "The FetchMeta hook is not configured"}
+}
+
+func logUpload(r Request, hints UploadHints, body io.ReadCloser) (blossom.BlobMeta, *blossom.Error) {
+	slog.Info("received UPLOAD request", "hash", hints.Hash, "type", hints.Type, "size", hints.Size, "ip", r.IP().Group())
+	return blossom.BlobMeta{}, &blossom.Error{Code: 404, Reason: "The Upload hook is not configured"}
+}
+
+func logDelete(r Request, h blossom.Hash) *blossom.Error {
+	slog.Info("received DELETE request", "hash", h, "ip", r.IP().Group())
+	return &blossom.Error{Code: 404, Reason: "The Delete hook is not configured"}
 }

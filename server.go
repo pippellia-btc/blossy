@@ -214,6 +214,30 @@ func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	request, err := parseDelete(r)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	for _, reject := range s.Reject.Delete {
+		err = reject(request, request.hash)
+		if err != nil {
+			blossom.WriteError(w, *err)
+			return
+		}
+	}
+
+	err = s.On.Delete(request, request.hash)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 // SetCORS sets CORS headers as required by BUD-01.
 func SetCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
