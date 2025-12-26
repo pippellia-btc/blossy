@@ -46,6 +46,10 @@ type RejectHooks struct {
 	// FetchMeta is invoked before processing a HEAD /<hash>.<ext> request.
 	// If any of the hooks returns a non-nil error, the request is rejected.
 	FetchMeta slice[func(r Request, hash blossom.Hash, ext string) *blossom.Error]
+
+	// Upload is invoked when processing the HEAD /upload and before processing
+	// every PUT /upload request. If any of the hooks returns a non-nil error, the request is rejected.
+	Upload slice[func(r Request, hints UploadHints) *blossom.Error]
 }
 
 type OnHooks struct {
@@ -56,6 +60,10 @@ type OnHooks struct {
 	// FetchMeta handles the core logic for HEAD /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
 	FetchMeta func(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error)
+
+	// Upload handles the core logic for PUT /upload as per BUD-01.
+	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/02.md
+	Upload func(r Request, hints UploadHints, body io.ReadCloser) (blossom.BlobMeta, *blossom.Error)
 }
 
 func NewOnHooks() OnHooks {

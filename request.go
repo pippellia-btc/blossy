@@ -3,7 +3,9 @@ package blossy
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/pippellia-btc/blossom"
@@ -71,6 +73,45 @@ func parseFetch(r *http.Request) (fetchRequest, *blossom.Error) {
 		},
 		hash: hash,
 		ext:  ext,
+	}
+	return request, nil
+}
+
+type uploadRequest struct {
+	request
+	hints UploadHints
+	body  io.ReadCloser
+}
+
+func parseUpload(r *http.Request) (uploadRequest, *blossom.Error) {
+	// In the future I want to pass the hash of the body.
+	// Now there is no point since the auth scheme is broken anyway.
+	// See https://github.com/hzrd149/blossom/pull/87
+	pubkey, err := parsePubkey(r.Header, VerbUpload, blossom.Hash{})
+	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
+		return uploadRequest{}, &blossom.Error{Code: http.StatusUnauthorized, Reason: err.Error()}
+	}
+
+	hints := UploadHints{
+		MIME: r.Header.Get("Content-Type"),
+		Size: -1, // default to unknown
+	}
+
+	if cl := r.Header.Get("Content-Length"); cl != "" {
+		size, err := strconv.ParseInt(cl, 10, 64)
+		if err == nil {
+			hints.Size = size
+		}
+	}
+
+	request := uploadRequest{
+		request: request{
+			ip:     GetIP(r),
+			pubkey: pubkey,
+			raw:    r,
+		},
+		hints: hints,
+		body:  r.Body,
 	}
 	return request, nil
 }

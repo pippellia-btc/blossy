@@ -2,6 +2,7 @@ package blossy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -151,6 +152,42 @@ func (s *Server) HandleFetchMeta(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", mime)
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	w.Header().Set("Accept-Ranges", "bytes")
+}
+
+// HandleUpload handles the PUT /upload endpoint.
+func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
+	request, err := parseUpload(r)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	for _, reject := range s.Reject.Upload {
+		err = reject(request, request.hints)
+		if err != nil {
+			blossom.WriteError(w, *err)
+			return
+		}
+	}
+
+	meta, err := s.On.Upload(request, request.hints, request.body)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	descriptor := BlobDescriptor{
+		URL:      s.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
+		SHA256:   meta.Hash.Hex(),
+		Size:     meta.Size,
+		Type:     meta.Type,
+		Uploaded: meta.CreatedAt,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(descriptor); err != nil {
+		s.log.Error("failed to encode blob descriptor", "error", err, "hash", meta.Hash)
+	}
 }
 
 // SetCORS sets CORS headers as required by BUD-01.

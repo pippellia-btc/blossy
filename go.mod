@@ -6,7 +6,7 @@ toolchain go1.24.11
 
 require (
 	github.com/nbd-wtf/go-nostr v0.51.8
-	github.com/pippellia-btc/blossom v0.2.0
+	github.com/pippellia-btc/blossom v0.3.0
 )
 
 require (
