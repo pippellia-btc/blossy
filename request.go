@@ -45,24 +45,24 @@ func (r request) IsAuthed() bool           { return r.pubkey != "" }
 func (r request) Context() context.Context { return r.raw.Context() }
 func (r request) Raw() *http.Request       { return r.raw }
 
-type blobRequest struct {
+type fetchRequest struct {
 	request
 	hash blossom.Hash
 	ext  string
 }
 
-func parseBlobRequest(r *http.Request) (blobRequest, *blossom.Error) {
+func parseFetch(r *http.Request) (fetchRequest, *blossom.Error) {
 	hash, ext, err := ParseHash(r.URL.Path)
 	if err != nil {
-		return blobRequest{}, &blossom.Error{Code: http.StatusBadRequest, Reason: err.Error()}
+		return fetchRequest{}, &blossom.Error{Code: http.StatusBadRequest, Reason: err.Error()}
 	}
 
 	pubkey, err := parsePubkey(r.Header, VerbGet, hash)
 	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
-		return blobRequest{}, &blossom.Error{Code: http.StatusUnauthorized, Reason: err.Error()}
+		return fetchRequest{}, &blossom.Error{Code: http.StatusUnauthorized, Reason: err.Error()}
 	}
 
-	request := blobRequest{
+	request := fetchRequest{
 		request: request{
 			ip:     GetIP(r),
 			pubkey: pubkey,

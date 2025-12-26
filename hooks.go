@@ -39,36 +39,38 @@ func (s *slice[T]) Clear() {
 }
 
 type RejectHooks struct {
-	// Get is invoked before processing a GET /<hash>.<ext> request.
-	Get slice[func(Request, blossom.Hash, string) *blossom.Error]
+	// FetchBlob is invoked before processing a GET /<hash>.<ext> request.
+	// If any of the hooks returns a non-nil error, the request is rejected.
+	FetchBlob slice[func(r Request, hash blossom.Hash, ext string) *blossom.Error]
 
-	// Check is invoked before processing a HEAD /<hash>.<ext> request.
-	Check slice[func(Request, blossom.Hash, string) *blossom.Error]
+	// FetchMeta is invoked before processing a HEAD /<hash>.<ext> request.
+	// If any of the hooks returns a non-nil error, the request is rejected.
+	FetchMeta slice[func(r Request, hash blossom.Hash, ext string) *blossom.Error]
 }
 
 type OnHooks struct {
-	// Get handles the core logic for GET /<sha256>.<ext> as per BUD-01.
+	// FetchBlob handles the core logic for GET /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
-	Get func(Request, blossom.Hash, string) (blob io.ReadSeekCloser, err *blossom.Error)
+	FetchBlob func(r Request, hash blossom.Hash, ext string) (io.ReadSeekCloser, *blossom.Error)
 
-	// Check handles the core logic for HEAD /<sha256>.<ext> as per BUD-01.
+	// FetchMeta handles the core logic for HEAD /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
-	Check func(Request, blossom.Hash, string) (mime string, size int64, err *blossom.Error)
+	FetchMeta func(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error)
 }
 
 func NewOnHooks() OnHooks {
 	return OnHooks{
-		Get:   logGet,
-		Check: logCheck,
+		FetchBlob: logFetchBlob,
+		FetchMeta: logFetchMeta,
 	}
 }
 
-func logGet(r Request, h blossom.Hash, ext string) (io.ReadSeekCloser, *blossom.Error) {
+func logFetchBlob(r Request, h blossom.Hash, ext string) (io.ReadSeekCloser, *blossom.Error) {
 	slog.Info("received GET request", "hash", h, "extention", ext, "ip", r.IP().Group())
-	return nil, &blossom.Error{Code: 404, Reason: "The GET hook is not configured"}
+	return nil, &blossom.Error{Code: 404, Reason: "The FetchBlob hook is not configured"}
 }
 
-func logCheck(r Request, h blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
-	slog.Info("received GET request", "hash", h, "extention", ext, "ip", r.IP().Group())
-	return "", 0, &blossom.Error{Code: 404, Reason: "The GET hook is not configured"}
+func logFetchMeta(r Request, h blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
+	slog.Info("received HEAD request", "hash", h, "extention", ext, "ip", r.IP().Group())
+	return "", 0, &blossom.Error{Code: 404, Reason: "The FetchMeta hook is not configured"}
 }

@@ -85,10 +85,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case r.Method == http.MethodGet:
-		s.HandleGet(w, r)
+		s.HandleFetchBlob(w, r)
 
 	case r.Method == http.MethodHead:
-		s.HandleCheck(w, r)
+		s.HandleFetchMeta(w, r)
 
 	case r.Method == http.MethodOptions:
 		w.WriteHeader(http.StatusOK)
@@ -98,15 +98,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleGet handles the GET /<sha256>.<ext> endpoint.
-func (s *Server) HandleGet(w http.ResponseWriter, r *http.Request) {
-	request, err := parseBlobRequest(r)
+// HandleFetchBlob handles the GET /<sha256>.<ext> endpoint.
+func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
+	request, err := parseFetch(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
 
-	for _, reject := range s.Reject.Get {
+	for _, reject := range s.Reject.FetchBlob {
 		err = reject(request, request.hash, request.ext)
 		if err != nil {
 			blossom.WriteError(w, *err)
@@ -114,7 +114,7 @@ func (s *Server) HandleGet(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data, err := s.On.Get(request, request.hash, request.ext)
+	data, err := s.On.FetchBlob(request, request.hash, request.ext)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
@@ -126,15 +126,15 @@ func (s *Server) HandleGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleCheck handles the HEAD /<sha256>.<ext> endpoint.
-func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
-	request, err := parseBlobRequest(r)
+// HandleFetchMeta handles the HEAD /<sha256>.<ext> endpoint.
+func (s *Server) HandleFetchMeta(w http.ResponseWriter, r *http.Request) {
+	request, err := parseFetch(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
 
-	for _, reject := range s.Reject.Check {
+	for _, reject := range s.Reject.FetchMeta {
 		err = reject(request, request.hash, request.ext)
 		if err != nil {
 			blossom.WriteError(w, *err)
@@ -142,7 +142,7 @@ func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	mime, size, err := s.On.Check(request, request.hash, request.ext)
+	mime, size, err := s.On.FetchMeta(request, request.hash, request.ext)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
