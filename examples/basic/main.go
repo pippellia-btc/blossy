@@ -7,8 +7,8 @@ import (
 	"os"
 	"os/signal"
 
-	blossy "github.com/pippellia-btc/bloomy"
 	"github.com/pippellia-btc/blossom"
+	"github.com/pippellia-btc/blossy"
 )
 
 func main() {

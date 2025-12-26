@@ -1,4 +1,4 @@
-module github.com/pippellia-btc/bloomy
+module github.com/pippellia-btc/blossy
 
 go 1.24.1
 
