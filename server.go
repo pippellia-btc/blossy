@@ -97,6 +97,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.Method == http.MethodHead:
 		s.HandleFetchMeta(w, r)
 
+	case r.Method == http.MethodDelete:
+		s.HandleDelete(w, r)
+
 	case r.Method == http.MethodOptions:
 		w.WriteHeader(http.StatusOK)
 
