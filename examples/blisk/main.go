@@ -72,11 +72,11 @@ func LoadMeta(r blossy.Request, hash blossom.Hash, ext string) (string, int64, *
 	return meta.Type, meta.Size, nil
 }
 
-func SaveBlob(r blossy.Request, hints blossy.UploadHints, body io.ReadCloser) (blossom.BlobMeta, *blossom.Error) {
+func SaveBlob(r blossy.Request, hints blossy.UploadHints, data io.Reader) (blossom.BlobMeta, *blossom.Error) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	meta, err := store.Save(ctx, body, r.Pubkey())
+	meta, err := store.Save(ctx, data, r.Pubkey())
 	if err != nil {
 		return blossom.BlobMeta{}, &blossom.Error{Code: 500, Reason: err.Error()}
 	}

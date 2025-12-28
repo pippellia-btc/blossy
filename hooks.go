@@ -81,7 +81,7 @@ type OnHooks struct {
 
 	// Upload handles the core logic for PUT /upload as per BUD-02.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/02.md
-	Upload func(r Request, hints UploadHints, data io.ReadCloser) (blossom.BlobMeta, *blossom.Error)
+	Upload func(r Request, hints UploadHints, data io.Reader) (blossom.BlobMeta, *blossom.Error)
 
 	// Mirror handles the core logic for PUT /mirror as per BUD-04.
 	// The url has been previously validated to be a non-nil and valid blossom URL.
@@ -90,7 +90,7 @@ type OnHooks struct {
 
 	// Media handles the core logic for PUT /media as per BUD-05.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/05.md
-	Media func(r Request, hints UploadHints, data io.ReadCloser) (blossom.BlobMeta, *blossom.Error)
+	Media func(r Request, hints UploadHints, data io.Reader) (blossom.BlobMeta, *blossom.Error)
 }
 
 func NewOnHooks() OnHooks {
@@ -116,7 +116,7 @@ func defaultDelete(_ Request, _ blossom.Hash) *blossom.Error {
 	return &blossom.Error{Code: http.StatusNotFound, Reason: "The Delete hook is not configured"}
 }
 
-func defaultUpload(_ Request, _ UploadHints, body io.ReadCloser) (blossom.BlobMeta, *blossom.Error) {
+func defaultUpload(_ Request, _ UploadHints, body io.Reader) (blossom.BlobMeta, *blossom.Error) {
 	return blossom.BlobMeta{}, &blossom.Error{Code: http.StatusNotFound, Reason: "The Upload hook is not configured"}
 }
 
@@ -124,6 +124,6 @@ func defaultMirror(_ Request, _ *url.URL) (blossom.BlobMeta, *blossom.Error) {
 	return blossom.BlobMeta{}, &blossom.Error{Code: http.StatusNotFound, Reason: "The Mirror hook is not configured"}
 }
 
-func defaultMedia(_ Request, _ UploadHints, _ io.ReadCloser) (blossom.BlobMeta, *blossom.Error) {
+func defaultMedia(_ Request, _ UploadHints, _ io.Reader) (blossom.BlobMeta, *blossom.Error) {
 	return blossom.BlobMeta{}, &blossom.Error{Code: http.StatusNotFound, Reason: "The Media hook is not configured"}
 }

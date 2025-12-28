@@ -113,7 +113,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 	default:
-		http.Error(w, "Unsupported request", http.StatusBadRequest)
+		http.Error(w, "Unsupported request", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -138,6 +138,7 @@ func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	defer data.Close()
 
 	blob := blossom.Blob{Data: data}
 	if err := blossom.WriteBlob(w, blob); err != nil {
@@ -193,7 +194,6 @@ func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -204,6 +204,7 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	defer request.body.Close()
 
 	for _, reject := range s.Reject.Upload {
 		err = reject(request, request.hints)
@@ -294,6 +295,7 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	defer request.body.Close()
 
 	for _, reject := range s.Reject.Media {
 		err = reject(request, request.hints)
