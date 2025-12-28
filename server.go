@@ -194,7 +194,7 @@ func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // HandleUpload handles the PUT /upload endpoint.
