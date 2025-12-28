@@ -91,6 +91,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/upload" && r.Method == http.MethodHead:
 		s.HandleUploadCheck(w, r)
 
+	case r.URL.Path == "/mirror" && r.Method == http.MethodPut:
+		s.HandleMirror(w, r)
+
 	case r.Method == http.MethodGet:
 		s.HandleFetchBlob(w, r)
 
@@ -217,6 +220,43 @@ func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// HandleMirror handles the PUT /mirror endpoint.
+func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
+	request, err := parseMirror(r)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	for _, reject := range s.Reject.Mirror {
+		err = reject(request, request.url)
+		if err != nil {
+			blossom.WriteError(w, *err)
+			return
+		}
+	}
+
+	meta, err := s.On.Mirror(request, request.url)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	descriptor := BlobDescriptor{
+		URL:      s.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
+		SHA256:   meta.Hash.Hex(),
+		Size:     meta.Size,
+		Type:     meta.Type,
+		Uploaded: meta.CreatedAt,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(descriptor); err != nil {
+		s.log.Error("failed to encode blob descriptor", "error", err, "hash", meta.Hash)
+	}
+}
+
+// HandleDelete handles the DELETE /<sha256> endpoint.
 func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	request, err := parseDelete(r)
 	if err != nil {
