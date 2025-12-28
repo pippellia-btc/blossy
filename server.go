@@ -91,6 +91,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/upload" && r.Method == http.MethodHead:
 		s.HandleUploadCheck(w, r)
 
+	case r.URL.Path == "/media" && r.Method == http.MethodPut:
+		s.HandleMedia(w, r)
+
+	case r.URL.Path == "/media" && r.Method == http.MethodHead:
+		s.HandleMediaCheck(w, r)
+
 	case r.URL.Path == "/mirror" && r.Method == http.MethodPut:
 		s.HandleMirror(w, r)
 
@@ -164,6 +170,31 @@ func (s *Server) HandleFetchMeta(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", mime)
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	w.Header().Set("Accept-Ranges", "bytes")
+}
+
+// HandleDelete handles the DELETE /<sha256> endpoint.
+func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	request, err := parseDelete(r)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	for _, reject := range s.Reject.Delete {
+		err = reject(request, request.hash)
+		if err != nil {
+			blossom.WriteError(w, *err)
+			return
+		}
+	}
+
+	err = s.On.Delete(request, request.hash)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // HandleUpload handles the PUT /upload endpoint.
@@ -256,28 +287,57 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleDelete handles the DELETE /<sha256> endpoint.
-func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	request, err := parseDelete(r)
+// HandleMedia handles the PUT /media endpoint.
+func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
+	request, err := parseUpload(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
 
-	for _, reject := range s.Reject.Delete {
-		err = reject(request, request.hash)
+	for _, reject := range s.Reject.Media {
+		err = reject(request, request.hints)
 		if err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	err = s.On.Delete(request, request.hash)
+	meta, err := s.On.Media(request, request.hints, request.body)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
 
+	descriptor := BlobDescriptor{
+		URL:      s.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
+		SHA256:   meta.Hash.Hex(),
+		Size:     meta.Size,
+		Type:     meta.Type,
+		Uploaded: meta.CreatedAt,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(descriptor); err != nil {
+		s.log.Error("failed to encode blob descriptor", "error", err, "hash", meta.Hash)
+	}
+}
+
+// HandleMediaCheck handles the HEAD /media endpoint.
+func (s *Server) HandleMediaCheck(w http.ResponseWriter, r *http.Request) {
+	request, err := parseUploadCheck(r)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	for _, reject := range s.Reject.Media {
+		err = reject(request, request.hints)
+		if err != nil {
+			blossom.WriteError(w, *err)
+			return
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 }
 

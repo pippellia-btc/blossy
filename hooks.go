@@ -60,6 +60,10 @@ type RejectHooks struct {
 	// The url has been previously validated to be a non-nil and valid blossom URL.
 	// If any of the hooks returns a non-nil error, the request is rejected.
 	Mirror slice[func(r Request, url *url.URL) *blossom.Error]
+
+	// Media is invoked when processing the HEAD /media and before processing every PUT /media request.
+	// If any of the hooks returns a non-nil error, the request is rejected.
+	Media slice[func(r Request, hints UploadHints) *blossom.Error]
 }
 
 type OnHooks struct {
@@ -83,6 +87,10 @@ type OnHooks struct {
 	// The url has been previously validated to be a non-nil and valid blossom URL.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/04.md
 	Mirror func(r Request, url *url.URL) (blossom.BlobMeta, *blossom.Error)
+
+	// Media handles the core logic for PUT /media as per BUD-05.
+	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/05.md
+	Media func(r Request, hints UploadHints, data io.ReadCloser) (blossom.BlobMeta, *blossom.Error)
 }
 
 func NewOnHooks() OnHooks {
@@ -92,25 +100,30 @@ func NewOnHooks() OnHooks {
 		Delete:    defaultDelete,
 		Upload:    defaultUpload,
 		Mirror:    defaultMirror,
+		Media:     defaultMedia,
 	}
 }
 
-func defaultFetchBlob(r Request, h blossom.Hash, ext string) (io.ReadSeekCloser, *blossom.Error) {
+func defaultFetchBlob(_ Request, _ blossom.Hash, _ string) (io.ReadSeekCloser, *blossom.Error) {
 	return nil, &blossom.Error{Code: http.StatusNotImplemented, Reason: "The FetchBlob hook is not configured"}
 }
 
-func defaultFetchMeta(r Request, h blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
+func defaultFetchMeta(_ Request, _ blossom.Hash, _ string) (mime string, size int64, err *blossom.Error) {
 	return "", 0, &blossom.Error{Code: http.StatusNotImplemented, Reason: "The FetchMeta hook is not configured"}
 }
 
-func defaultDelete(r Request, h blossom.Hash) *blossom.Error {
+func defaultDelete(_ Request, _ blossom.Hash) *blossom.Error {
 	return &blossom.Error{Code: http.StatusNotFound, Reason: "The Delete hook is not configured"}
 }
 
-func defaultUpload(r Request, hints UploadHints, body io.ReadCloser) (blossom.BlobMeta, *blossom.Error) {
+func defaultUpload(_ Request, _ UploadHints, body io.ReadCloser) (blossom.BlobMeta, *blossom.Error) {
 	return blossom.BlobMeta{}, &blossom.Error{Code: http.StatusNotFound, Reason: "The Upload hook is not configured"}
 }
 
-func defaultMirror(r Request, url *url.URL) (blossom.BlobMeta, *blossom.Error) {
+func defaultMirror(_ Request, _ *url.URL) (blossom.BlobMeta, *blossom.Error) {
 	return blossom.BlobMeta{}, &blossom.Error{Code: http.StatusNotFound, Reason: "The Mirror hook is not configured"}
+}
+
+func defaultMedia(_ Request, _ UploadHints, _ io.ReadCloser) (blossom.BlobMeta, *blossom.Error) {
+	return blossom.BlobMeta{}, &blossom.Error{Code: http.StatusNotFound, Reason: "The Media hook is not configured"}
 }
