@@ -6,12 +6,14 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
+	"github.com/nbd-wtf/go-nostr"
 	"github.com/pippellia-btc/blossom"
 )
 
@@ -197,12 +199,9 @@ type mirrorRequest struct {
 }
 
 func parseMirror(r *http.Request) (mirrorRequest, *blossom.Error) {
-	data, err := io.ReadAll(io.LimitReader(r.Body, 512)) // limit to 512 bytes
-	if err != nil {
-		return mirrorRequest{}, &blossom.Error{Code: http.StatusBadRequest, Reason: "failed to read body: " + err.Error()}
-	}
-	if len(data) >= 512 {
-		return mirrorRequest{}, &blossom.Error{Code: http.StatusRequestEntityTooLarge, Reason: "body too large"}
+	data, rerr := ReadNoMore(r.Body, 512)
+	if rerr != nil {
+		return mirrorRequest{}, rerr
 	}
 
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -240,8 +239,39 @@ func parseMirror(r *http.Request) (mirrorRequest, *blossom.Error) {
 	}, nil
 }
 
-// ParseHash extracts the SHA256 hash from URL path.
-// Supports both /<sha256> and /<sha256>.<ext> formats.
+type reportRequest struct {
+	request
+	report Report
+}
+
+func parseReport(r *http.Request) (reportRequest, *blossom.Error) {
+	data, rerr := ReadNoMore(r.Body, 100_000) // ~100 KB
+	if rerr != nil {
+		return reportRequest{}, rerr
+	}
+
+	event := &nostr.Event{}
+	dec := json.NewDecoder(bytes.NewReader(data))
+
+	if err := dec.Decode(&event); err != nil {
+		return reportRequest{}, &blossom.Error{Code: http.StatusBadRequest, Reason: "failed to parse JSON body: " + err.Error()}
+	}
+
+	report, err := parseReportEvent(event)
+	if err != nil {
+		return reportRequest{}, &blossom.Error{Code: http.StatusBadRequest, Reason: err.Error()}
+	}
+
+	return reportRequest{
+		request: request{
+			ip:  GetIP(r),
+			raw: r,
+		},
+		report: report,
+	}, nil
+}
+
+// ParseHash extracts the SHA256 hash and the optional extention from URL path.
 func ParseHash(path string) (hash blossom.Hash, ext string, err error) {
 	path = strings.TrimPrefix(path, "/")
 	parts := strings.SplitN(path, ".", 2) // separate hash from extention
@@ -263,4 +293,50 @@ func ValidateBlossomURL(url *url.URL) error {
 	parts := strings.SplitN(path, ".", 2) // separate hash from extention
 	_, err := blossom.ParseHash(parts[0])
 	return err
+}
+
+// ReadNoMore reads no more than `limit` bytes from the reader.
+// It returns an error if the reader has more bytes than `limit` to be read.
+func ReadNoMore(r io.Reader, limit int) ([]byte, *blossom.Error) {
+	data, err := io.ReadAll(io.LimitReader(r, int64(limit)))
+	if err != nil {
+		return nil, &blossom.Error{Code: http.StatusBadRequest, Reason: "failed to read body: " + err.Error()}
+	}
+	if len(data) >= limit {
+		return nil, &blossom.Error{Code: http.StatusRequestEntityTooLarge, Reason: "body too large"}
+	}
+	return data, nil
+}
+
+// ParseReportEvent parses a [Report] from the underlying nostr event.
+func parseReportEvent(event *nostr.Event) (Report, error) {
+	if event.Kind != nostr.KindReporting {
+		return Report{}, errors.New("report event must be a kind 1984")
+	}
+
+	report := Report{
+		Pubkey:  event.PubKey,
+		Content: event.Content,
+		Raw:     event,
+	}
+
+	for _, tag := range event.Tags {
+		if len(tag) < 3 || tag[0] != "x" {
+			continue
+		}
+
+		hash, err := blossom.ParseHash(tag[1])
+		if err != nil {
+			return Report{}, fmt.Errorf("invalid \"x\" tag in report event: %w", err)
+		}
+
+		report.Blobs = append(report.Blobs,
+			ReportedBlob{Hash: hash, Reason: tag[2]},
+		)
+	}
+
+	if err := verify(event); err != nil {
+		return Report{}, fmt.Errorf("invalid report event: %w", err)
+	}
+	return report, nil
 }

@@ -100,6 +100,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/mirror" && r.Method == http.MethodPut:
 		s.HandleMirror(w, r)
 
+	case r.URL.Path == "/report" && r.Method == http.MethodPut:
+		s.HandleReport(w, r)
+
 	case r.Method == http.MethodGet:
 		s.HandleFetchBlob(w, r)
 
@@ -339,6 +342,29 @@ func (s *Server) HandleMediaCheck(w http.ResponseWriter, r *http.Request) {
 			blossom.WriteError(w, *err)
 			return
 		}
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// HandleReport handles the PUT /report endpoint.
+func (s *Server) HandleReport(w http.ResponseWriter, r *http.Request) {
+	request, err := parseReport(r)
+	if err != nil {
+		blossom.WriteError(w, *err)
+		return
+	}
+
+	for _, reject := range s.Reject.Report {
+		err = reject(request, request.report)
+		if err != nil {
+			blossom.WriteError(w, *err)
+			return
+		}
+	}
+
+	if err = s.On.Report(request, request.report); err != nil {
+		blossom.WriteError(w, *err)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 }

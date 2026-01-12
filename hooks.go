@@ -64,6 +64,10 @@ type RejectHooks struct {
 	// Media is invoked when processing the HEAD /media and before processing every PUT /media request.
 	// If any of the hooks returns a non-nil error, the request is rejected.
 	Media slice[func(r Request, hints UploadHints) *blossom.Error]
+
+	// Report is invoked before processing a PUT /report request.
+	// If any of the hooks return a non-nil error, the request is rejected.
+	Report slice[func(r Request, report Report) *blossom.Error]
 }
 
 type OnHooks struct {
@@ -91,6 +95,10 @@ type OnHooks struct {
 	// Media handles the core logic for PUT /media as per BUD-05.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/05.md
 	Media func(r Request, hints UploadHints, data io.Reader) (blossom.BlobMeta, *blossom.Error)
+
+	// Report handles the core logic for PUT /report as per BUD-09.
+	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/09.md
+	Report func(r Request, report Report) *blossom.Error
 }
 
 func NewOnHooks() OnHooks {
@@ -101,6 +109,7 @@ func NewOnHooks() OnHooks {
 		Upload:    defaultUpload,
 		Mirror:    defaultMirror,
 		Media:     defaultMedia,
+		Report:    defaultReport,
 	}
 }
 
@@ -126,4 +135,8 @@ func defaultMirror(_ Request, _ *url.URL) (blossom.BlobMeta, *blossom.Error) {
 
 func defaultMedia(_ Request, _ UploadHints, _ io.Reader) (blossom.BlobMeta, *blossom.Error) {
 	return blossom.BlobMeta{}, &blossom.Error{Code: http.StatusNotFound, Reason: "The Media hook is not configured"}
+}
+
+func defaultReport(_ Request, _ Report) *blossom.Error {
+	return &blossom.Error{Code: http.StatusNotFound, Reason: "The Report hook is not configured"}
 }
