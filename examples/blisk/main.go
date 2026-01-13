@@ -26,7 +26,9 @@ func main() {
 	}
 	defer store.Close()
 
-	blossom, err := blossy.NewServer()
+	blossom, err := blossy.NewServer(
+		blossy.WithBaseURL("example.com"),
+	)
 	if err != nil {
 		panic(err)
 	}

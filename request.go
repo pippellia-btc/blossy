@@ -17,6 +17,9 @@ import (
 	"github.com/pippellia-btc/blossom"
 )
 
+// Request represents metadata about an incoming HTTP request.
+// It provides access to identifying, network, authentication, and
+// contextual information, as well as the underlying raw http.Request.
 type Request interface {
 	// ID is the unique identified of the request, useful for logging or tracking.
 	ID() int64

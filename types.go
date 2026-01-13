@@ -5,8 +5,10 @@ import (
 	"github.com/pippellia-btc/blossom"
 )
 
+// BlobDescriptor represent a description of a blossom blob.
+// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/02.md#blob-descriptor
 type BlobDescriptor struct {
-	URL      string `json:"url"`
+	URL      string `json:"url"`    // Depends on the [Server] base URL
 	SHA256   string `json:"sha256"` // Hex-encoded SHA256 hash
 	Size     int64  `json:"size"`
 	Type     string `json:"type"`

@@ -8,37 +8,37 @@ import (
 	"net/http"
 	"strconv"
 	"sync/atomic"
-	"time"
 
 	"github.com/pippellia-btc/blossom"
 )
 
+// Server is the fundamental structure of the blossy package.
+// Create one with [NewServer].
 type Server struct {
-	baseURL string
-	nextID  atomic.Int64
-	log     *slog.Logger
+	log         *slog.Logger
+	nextRequest atomic.Int64
+
 	Hooks
-}
-
-type Option func(*Server)
-
-func WithBaseURL(url string) Option {
-	return func(s *Server) {
-		s.baseURL = url
-	}
-}
-
-func WithLogger(l *slog.Logger) Option {
-	return func(s *Server) {
-		s.log = l
-	}
+	settings
 }
 
 // NewServer returns a blossom server initialized with default parameters.
+
+// NewServer creates a new Server instance with sane defaults and customizable internal behavior.
+// Customize its structure with functional options (e.g., [WithBaseURL], [WithReadHeaderTimeout]).
+// Customize its behaviour by defining On.FetchBlob, On.Upload and other [Hooks].
+//
+// Example:
+//
+//	blossom := NewServer(
+//	    WithBaseURL("example.com"),
+//	    WithReadHeaderTimeout(5 * time.Second),
+//	)
 func NewServer(opts ...Option) (*Server, error) {
 	server := &Server{
-		log:   slog.Default(),
-		Hooks: DefaultHooks(),
+		log:      slog.Default(),
+		Hooks:    DefaultHooks(),
+		settings: newSettings(),
 	}
 
 	for _, opt := range opts {
@@ -51,8 +51,9 @@ func NewServer(opts ...Option) (*Server, error) {
 	return server, nil
 }
 
-func (s *Server) validate() error {
-	return nil
+// TotalRequests returns the total number of requests received since the relay startup.
+func (s *Server) TotalRequests() int {
+	return int(s.nextRequest.Load())
 }
 
 // StartAndServe starts the blossom server, listens to the provided address and handles http requests.
@@ -60,7 +61,12 @@ func (s *Server) validate() error {
 // It's a blocking operation, that stops only when the context gets cancelled.
 func (s *Server) StartAndServe(ctx context.Context, address string) error {
 	exitErr := make(chan error, 1)
-	server := &http.Server{Addr: address, Handler: s}
+	server := &http.Server{
+		Addr:              address,
+		Handler:           s,
+		ReadHeaderTimeout: s.settings.HTTP.readHeaderTimeout,
+		IdleTimeout:       s.settings.HTTP.idleTimeout,
+	}
 
 	go func() {
 		s.log.Info("serving the blossom server", "address", address)
@@ -71,7 +77,7 @@ func (s *Server) StartAndServe(ctx context.Context, address string) error {
 
 	select {
 	case <-ctx.Done():
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), s.settings.HTTP.shutdownTimeout)
 		defer cancel()
 		return server.Shutdown(ctx)
 
@@ -127,6 +133,7 @@ func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.FetchBlob {
 		err = reject(request, request.hash, request.ext)
@@ -156,6 +163,7 @@ func (s *Server) HandleFetchMeta(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.FetchMeta {
 		err = reject(request, request.hash, request.ext)
@@ -183,6 +191,7 @@ func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Delete {
 		err = reject(request, request.hash)
@@ -207,6 +216,8 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+
+	request.id = s.nextRequest.Add(1)
 	defer request.body.Close()
 
 	for _, reject := range s.Reject.Upload {
@@ -224,7 +235,7 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	descriptor := BlobDescriptor{
-		URL:      s.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
+		URL:      s.Sys.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
 		SHA256:   meta.Hash.Hex(),
 		Size:     meta.Size,
 		Type:     meta.Type,
@@ -244,6 +255,7 @@ func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Upload {
 		err = reject(request, request.hints)
@@ -262,6 +274,7 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Mirror {
 		err = reject(request, request.url)
@@ -278,7 +291,7 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 	}
 
 	descriptor := BlobDescriptor{
-		URL:      s.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
+		URL:      s.Sys.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
 		SHA256:   meta.Hash.Hex(),
 		Size:     meta.Size,
 		Type:     meta.Type,
@@ -298,6 +311,8 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+
+	request.id = s.nextRequest.Add(1)
 	defer request.body.Close()
 
 	for _, reject := range s.Reject.Media {
@@ -315,7 +330,7 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	descriptor := BlobDescriptor{
-		URL:      s.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
+		URL:      s.Sys.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
 		SHA256:   meta.Hash.Hex(),
 		Size:     meta.Size,
 		Type:     meta.Type,
@@ -335,6 +350,7 @@ func (s *Server) HandleMediaCheck(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Media {
 		err = reject(request, request.hints)
@@ -353,6 +369,7 @@ func (s *Server) HandleReport(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Report {
 		err = reject(request, request.report)

@@ -28,7 +28,9 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
 
-	blossom, err := blossy.NewServer()
+	blossom, err := blossy.NewServer(
+		blossy.WithBaseURL("example.com"),
+	)
 	if err != nil {
 		panic(err)
 	}

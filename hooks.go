@@ -39,37 +39,44 @@ func (s *slice[T]) Clear() {
 	*s = nil
 }
 
+// RejectHooks defines optional functions that can preemptively reject
+// certain actions before they are processed by the server.
+//
+// Each function in a hook slice is evaluated in order. If any function
+// returns a non-nil error, the corresponding input is immediately rejected.
+//
+// These hooks are useful for enforcing access policies, validating input,
+// or applying rate limits before the server performs further processing.
 type RejectHooks struct {
 	// FetchBlob is invoked before processing a GET /<hash>.<ext> request.
-	// If any of the hooks returns a non-nil error, the request is rejected.
 	FetchBlob slice[func(r Request, hash blossom.Hash, ext string) *blossom.Error]
 
 	// FetchMeta is invoked before processing a HEAD /<hash>.<ext> request.
-	// If any of the hooks returns a non-nil error, the request is rejected.
 	FetchMeta slice[func(r Request, hash blossom.Hash, ext string) *blossom.Error]
 
 	// Delete is invoked before processing a DELETE /<hash> request.
-	// If any of the hooks returns a non-nil error, the request is rejected, which means the blob won't be deleted.
 	Delete slice[func(r Request, hash blossom.Hash) *blossom.Error]
 
 	// Upload is invoked when processing the HEAD /upload and before processing every PUT /upload request.
-	// If any of the hooks returns a non-nil error, the request is rejected.
 	Upload slice[func(r Request, hints UploadHints) *blossom.Error]
 
 	// Mirror is invoked before processing a PUT /mirror request.
 	// The url has been previously validated to be a non-nil and valid blossom URL.
-	// If any of the hooks returns a non-nil error, the request is rejected.
 	Mirror slice[func(r Request, url *url.URL) *blossom.Error]
 
 	// Media is invoked when processing the HEAD /media and before processing every PUT /media request.
-	// If any of the hooks returns a non-nil error, the request is rejected.
 	Media slice[func(r Request, hints UploadHints) *blossom.Error]
 
 	// Report is invoked before processing a PUT /report request.
-	// If any of the hooks return a non-nil error, the request is rejected.
 	Report slice[func(r Request, report Report) *blossom.Error]
 }
 
+// OnHooks defines functions invoked after specific blossom events occur.
+// These hooks customize how the server reacts to requests such as upload or delete.
+// Each function is called only after the corresponding input has passed all RejectHooks (if any).
+//
+// OnHooks are typically used to implement custom processing, persistence,
+// logging, authorization, or other side effects in response to relay activity.
 type OnHooks struct {
 	// FetchBlob handles the core logic for GET /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
