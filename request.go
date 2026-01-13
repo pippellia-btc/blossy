@@ -274,10 +274,10 @@ func parseReport(r *http.Request) (reportRequest, *blossom.Error) {
 	}, nil
 }
 
-// ParseHash extracts the SHA256 hash and the optional extention from URL path.
+// ParseHash extracts the SHA256 hash and the optional extension from URL path.
 func ParseHash(path string) (hash blossom.Hash, ext string, err error) {
 	path = strings.TrimPrefix(path, "/")
-	parts := strings.SplitN(path, ".", 2) // separate hash from extention
+	parts := strings.SplitN(path, ".", 2) // separate hash from extension
 
 	hash, err = blossom.ParseHash(parts[0])
 	if err != nil {
@@ -293,7 +293,7 @@ func ParseHash(path string) (hash blossom.Hash, ext string, err error) {
 // ValidateBlossomURL checks whether the provided URL contains a valid blossom hash in its path.
 func ValidateBlossomURL(url *url.URL) error {
 	path := strings.TrimPrefix(url.Path, "/")
-	parts := strings.SplitN(path, ".", 2) // separate hash from extention
+	parts := strings.SplitN(path, ".", 2) // separate hash from extension
 	_, err := blossom.ParseHash(parts[0])
 	return err
 }
