@@ -51,7 +51,7 @@ func NewServer(opts ...Option) (*Server, error) {
 	return server, nil
 }
 
-// TotalRequests returns the total number of requests received since the relay startup.
+// TotalRequests returns the total number of requests received since the server startup.
 func (s *Server) TotalRequests() int {
 	return int(s.nextRequest.Load())
 }
