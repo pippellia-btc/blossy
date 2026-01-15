@@ -1,8 +1,6 @@
 module github.com/pippellia-btc/blossy
 
-go 1.24.1
-
-toolchain go1.24.11
+go 1.25
 
 require (
 	github.com/nbd-wtf/go-nostr v0.51.8
