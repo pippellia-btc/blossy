@@ -148,9 +148,10 @@ func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
-	defer data.Close()
 
 	blob := blossom.Blob{Data: data}
+	defer data.Close()
+
 	if err := blossom.WriteBlob(w, blob); err != nil {
 		s.log.Error("failure in GET /<sha256>", "error", err)
 	}
@@ -186,6 +187,13 @@ func (s *Server) HandleFetchMeta(w http.ResponseWriter, r *http.Request) {
 
 // HandleDelete handles the DELETE /<sha256> endpoint.
 func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	if s.On.Delete == nil {
+		// delete endpoint is optional
+		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Delete hook is not configured"}
+		blossom.WriteError(w, err)
+		return
+	}
+
 	request, err := parseDelete(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
@@ -211,6 +219,13 @@ func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
 
 // HandleUpload handles the PUT /upload endpoint.
 func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
+	if s.On.Upload == nil {
+		// upload endpoint is optional
+		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Upload hook is not configured"}
+		blossom.WriteError(w, err)
+		return
+	}
+
 	request, err := parseUpload(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
@@ -250,6 +265,13 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 
 // HandleUploadCheck handles the HEAD /upload endpoint.
 func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
+	if s.On.Upload == nil {
+		// upload endpoint is optional
+		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Upload hook is not configured"}
+		blossom.WriteError(w, err)
+		return
+	}
+
 	request, err := parseUploadCheck(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
@@ -269,11 +291,19 @@ func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
 
 // HandleMirror handles the PUT /mirror endpoint.
 func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
+	if s.On.Mirror == nil {
+		// mirror endpoint is optional
+		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Mirror hook is not configured"}
+		blossom.WriteError(w, err)
+		return
+	}
+
 	request, err := parseMirror(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
+
 	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Mirror {
@@ -306,6 +336,13 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 
 // HandleMedia handles the PUT /media endpoint.
 func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
+	if s.On.Media == nil {
+		// media endpoint is optional
+		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Media hook is not configured"}
+		blossom.WriteError(w, err)
+		return
+	}
+
 	request, err := parseUpload(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
@@ -345,6 +382,13 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 
 // HandleMediaCheck handles the HEAD /media endpoint.
 func (s *Server) HandleMediaCheck(w http.ResponseWriter, r *http.Request) {
+	if s.On.Media == nil {
+		// media endpoint is optional
+		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Media hook is not configured"}
+		blossom.WriteError(w, err)
+		return
+	}
+
 	request, err := parseUploadCheck(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
@@ -364,6 +408,13 @@ func (s *Server) HandleMediaCheck(w http.ResponseWriter, r *http.Request) {
 
 // HandleReport handles the PUT /report endpoint.
 func (s *Server) HandleReport(w http.ResponseWriter, r *http.Request) {
+	if s.On.Report == nil {
+		// report endpoint is optional
+		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Report hook is not configured"}
+		blossom.WriteError(w, err)
+		return
+	}
+
 	request, err := parseReport(r)
 	if err != nil {
 		blossom.WriteError(w, *err)

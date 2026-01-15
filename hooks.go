@@ -2,6 +2,7 @@ package blossy
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -87,23 +88,28 @@ type OnHooks struct {
 	FetchMeta func(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error)
 
 	// Delete handles the core logic for DELETE /<sha256> as per BUD-02.
+	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/02.md
 	Delete func(r Request, hash blossom.Hash) *blossom.Error
 
 	// Upload handles the core logic for PUT /upload as per BUD-02.
+	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/02.md
 	Upload func(r Request, hints UploadHints, data io.Reader) (blossom.BlobMeta, *blossom.Error)
 
 	// Mirror handles the core logic for PUT /mirror as per BUD-04.
 	// The url has been previously validated to be a non-nil and valid blossom URL.
+	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/04.md
 	Mirror func(r Request, url *url.URL) (blossom.BlobMeta, *blossom.Error)
 
 	// Media handles the core logic for PUT /media as per BUD-05.
+	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/05.md
 	Media func(r Request, hints UploadHints, data io.Reader) (blossom.BlobMeta, *blossom.Error)
 
 	// Report handles the core logic for PUT /report as per BUD-09.
+	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/09.md
 	Report func(r Request, report Report) *blossom.Error
 }
@@ -112,38 +118,15 @@ func NewOnHooks() OnHooks {
 	return OnHooks{
 		FetchBlob: defaultFetchBlob,
 		FetchMeta: defaultFetchMeta,
-		Delete:    defaultDelete,
-		Upload:    defaultUpload,
-		Mirror:    defaultMirror,
-		Media:     defaultMedia,
-		Report:    defaultReport,
 	}
 }
 
-func defaultFetchBlob(_ Request, _ blossom.Hash, _ string) (io.ReadSeekCloser, *blossom.Error) {
-	return nil, &blossom.Error{Code: http.StatusNotImplemented, Reason: "The FetchBlob hook is not configured"}
+func defaultFetchBlob(r Request, hash blossom.Hash, ext string) (io.ReadSeekCloser, *blossom.Error) {
+	slog.Info("received GET request", "hash", hash.Hex(), "ext", ext, "ip", r.IP().Group())
+	return nil, &blossom.Error{Code: http.StatusNotFound, Reason: "The FetchBlob hook is not configured"}
 }
 
-func defaultFetchMeta(_ Request, _ blossom.Hash, _ string) (mime string, size int64, err *blossom.Error) {
-	return "", 0, &blossom.Error{Code: http.StatusNotImplemented, Reason: "The FetchMeta hook is not configured"}
-}
-
-func defaultDelete(_ Request, _ blossom.Hash) *blossom.Error {
-	return &blossom.Error{Code: http.StatusNotFound, Reason: "The Delete hook is not configured"}
-}
-
-func defaultUpload(_ Request, _ UploadHints, body io.Reader) (blossom.BlobMeta, *blossom.Error) {
-	return blossom.BlobMeta{}, &blossom.Error{Code: http.StatusNotFound, Reason: "The Upload hook is not configured"}
-}
-
-func defaultMirror(_ Request, _ *url.URL) (blossom.BlobMeta, *blossom.Error) {
-	return blossom.BlobMeta{}, &blossom.Error{Code: http.StatusNotFound, Reason: "The Mirror hook is not configured"}
-}
-
-func defaultMedia(_ Request, _ UploadHints, _ io.Reader) (blossom.BlobMeta, *blossom.Error) {
-	return blossom.BlobMeta{}, &blossom.Error{Code: http.StatusNotFound, Reason: "The Media hook is not configured"}
-}
-
-func defaultReport(_ Request, _ Report) *blossom.Error {
-	return &blossom.Error{Code: http.StatusNotFound, Reason: "The Report hook is not configured"}
+func defaultFetchMeta(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
+	slog.Info("received HEAD request", "hash", hash.Hex(), "ext", ext, "ip", r.IP().Group())
+	return "", 0, &blossom.Error{Code: http.StatusNotFound, Reason: "The FetchMeta hook is not configured"}
 }
