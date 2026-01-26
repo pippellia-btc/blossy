@@ -22,8 +22,6 @@ type Server struct {
 	settings
 }
 
-// NewServer returns a blossom server initialized with default parameters.
-
 // NewServer creates a new Server instance with sane defaults and customizable internal behavior.
 // Customize its structure with functional options (e.g., [WithBaseURL], [WithReadHeaderTimeout]).
 // Customize its behaviour by defining On.FetchBlob, On.Upload and other [Hooks].
@@ -136,8 +134,7 @@ func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
 	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.FetchBlob {
-		err = reject(request, request.hash, request.ext)
-		if err != nil {
+		if err = reject(request, request.hash, request.ext); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
@@ -167,8 +164,7 @@ func (s *Server) HandleFetchMeta(w http.ResponseWriter, r *http.Request) {
 	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.FetchMeta {
-		err = reject(request, request.hash, request.ext)
-		if err != nil {
+		if err = reject(request, request.hash, request.ext); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
@@ -202,15 +198,13 @@ func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Delete {
-		err = reject(request, request.hash)
-		if err != nil {
+		if err = reject(request, request.hash); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	err = s.On.Delete(request, request.hash)
-	if err != nil {
+	if err = s.On.Delete(request, request.hash); err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
@@ -236,8 +230,7 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	defer request.body.Close()
 
 	for _, reject := range s.Reject.Upload {
-		err = reject(request, request.hints)
-		if err != nil {
+		if err = reject(request, request.hints); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
@@ -280,8 +273,7 @@ func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
 	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Upload {
-		err = reject(request, request.hints)
-		if err != nil {
+		if err = reject(request, request.hints); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
@@ -307,8 +299,7 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Mirror {
-		err = reject(request, request.url)
-		if err != nil {
+		if err = reject(request, request.url); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
@@ -353,8 +344,7 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 	defer request.body.Close()
 
 	for _, reject := range s.Reject.Media {
-		err = reject(request, request.hints)
-		if err != nil {
+		if err = reject(request, request.hints); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
@@ -397,8 +387,7 @@ func (s *Server) HandleMediaCheck(w http.ResponseWriter, r *http.Request) {
 	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Media {
-		err = reject(request, request.hints)
-		if err != nil {
+		if err = reject(request, request.hints); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
@@ -423,8 +412,7 @@ func (s *Server) HandleReport(w http.ResponseWriter, r *http.Request) {
 	request.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Report {
-		err = reject(request, request.report)
-		if err != nil {
+		if err = reject(request, request.report); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
