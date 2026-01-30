@@ -44,7 +44,7 @@ func main() {
 	}
 }
 
-func LoadBlob(r blossy.Request, hash blossom.Hash, ext string) (blossom.Blob, *blossom.Error) {
+func LoadBlob(r blossy.Request, hash blossom.Hash, ext string) (blossy.BlobDelivery, *blossom.Error) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
@@ -60,7 +60,7 @@ func LoadBlob(r blossy.Request, hash blossom.Hash, ext string) (blossom.Blob, *b
 	if err != nil {
 		return nil, &blossom.Error{Code: 500, Reason: err.Error()}
 	}
-	return blob, nil
+	return blossy.Serve(blob), nil
 }
 
 func LoadMeta(r blossy.Request, hash blossom.Hash, ext string) (string, int64, *blossom.Error) {

@@ -1,9 +1,44 @@
 package blossy
 
 import (
+	"net/http"
+
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/pippellia-btc/blossom"
 )
+
+// BlobDelivery represents how a blob should be delivered to the client.
+// Use [Serve] to serve a [blossom.Blob] directly to the client or [Redirect] to redirect the client to another URL.
+type BlobDelivery interface {
+	seal() // unexported method seals the interface
+}
+
+type servedBlob struct {
+	blossom.Blob
+}
+
+func (servedBlob) seal() {}
+
+type redirectedBlob struct {
+	url  string
+	code int
+}
+
+func (redirectedBlob) seal() {}
+
+// Serve creates a BlobDelivery that serves the blob directly to the client.
+func Serve(blob blossom.Blob) BlobDelivery {
+	return servedBlob{blob}
+}
+
+// Redirect creates a BlobDelivery that redirects the client to the given URL.
+// Common status codes are http.StatusFound (302) or http.StatusMovedPermanently (301).
+func Redirect(url string, code int) BlobDelivery {
+	if code == 0 {
+		code = http.StatusFound
+	}
+	return redirectedBlob{url: url, code: code}
+}
 
 // UploadHints contains hints about the uploaded blob as reported by the client.
 // They can be used for rejection or optimization purposes, but they must not be trusted

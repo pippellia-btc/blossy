@@ -30,7 +30,7 @@ func main() {
 	}
 }
 
-func BlobNotFound(r blossy.Request, hash blossom.Hash, ext string) (blossom.Blob, *blossom.Error) {
+func BlobNotFound(r blossy.Request, hash blossom.Hash, ext string) (blossy.BlobDelivery, *blossom.Error) {
 	slog.Info("received GET request", "hash", hash, "ext", ext, "ip", r.IP().Group())
 	return nil, &blossom.Error{Code: 404, Reason: "Blob not found"}
 }

@@ -63,7 +63,7 @@ type RejectHooks struct {
 type OnHooks struct {
 	// FetchBlob handles the core logic for GET /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
-	FetchBlob func(r Request, hash blossom.Hash, ext string) (blossom.Blob, *blossom.Error)
+	FetchBlob func(r Request, hash blossom.Hash, ext string) (BlobDelivery, *blossom.Error)
 
 	// FetchMeta handles the core logic for HEAD /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
@@ -109,7 +109,7 @@ func NewOnHooks() OnHooks {
 	}
 }
 
-func defaultFetchBlob(r Request, hash blossom.Hash, ext string) (blossom.Blob, *blossom.Error) {
+func defaultFetchBlob(r Request, hash blossom.Hash, ext string) (BlobDelivery, *blossom.Error) {
 	slog.Info("received GET request", "hash", hash.Hex(), "ext", ext, "ip", r.IP().Group())
 	return nil, &blossom.Error{Code: http.StatusNotFound, Reason: "The FetchBlob hook is not configured"}
 }

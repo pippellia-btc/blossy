@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"strconv"
 	"sync/atomic"
 
@@ -149,15 +150,33 @@ func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	blob, err := s.On.FetchBlob(request, request.hash, request.ext)
+	delivery, err := s.On.FetchBlob(request, request.hash, request.ext)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
-	defer blob.Close()
 
-	if err := blossom.WriteBlob(w, blob); err != nil {
-		s.log.Error("failure in GET /<sha256>", "error", err)
+	switch d := delivery.(type) {
+	case servedBlob:
+		blob := d.Blob
+		if blob == nil {
+			s.log.Error("handle fetch blob: blob is nil")
+			blossom.WriteError(w, blossom.Error{Code: http.StatusNotFound, Reason: "Blob not found"})
+			return
+		}
+		defer blob.Close()
+
+		if err := blossom.WriteBlob(w, blob); err != nil {
+			s.log.Error("failure in GET /<sha256>", "error", err)
+		}
+
+	case redirectedBlob:
+		http.Redirect(w, r, d.url, d.code)
+
+	default:
+		s.log.Error("handle fetch blob: unknown blob delivery type", "type", reflect.TypeOf(delivery))
+		blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError, Reason: "Unknown blob delivery type"})
+		return
 	}
 }
 
