@@ -88,7 +88,7 @@ type httpSettings struct {
 func newHTTPSettings() httpSettings {
 	return httpSettings{
 		readHeaderTimeout: 5 * time.Second,
-		idleTimeout:       120 * time.Second,
+		idleTimeout:       1 * time.Minute,
 		shutdownTimeout:   5 * time.Second,
 	}
 }
