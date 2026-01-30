@@ -22,24 +22,6 @@ func DefaultHooks() Hooks {
 	}
 }
 
-// Slice is an internal type used to simplify registration of hooks.
-type slice[T any] []T
-
-// Append adds hooks to the end of the slice, in the provided order.
-func (s *slice[T]) Append(hooks ...T) {
-	*s = append(*s, hooks...)
-}
-
-// Prepend adds hooks to the start of the slice, in the provided order.
-func (s *slice[T]) Prepend(hooks ...T) {
-	*s = append(hooks, *s...)
-}
-
-// Clear resets the slice, removing all registered hooks.
-func (s *slice[T]) Clear() {
-	*s = nil
-}
-
 // RejectHooks defines optional functions that can preemptively reject
 // certain actions before they are processed by the server.
 //
@@ -81,7 +63,7 @@ type RejectHooks struct {
 type OnHooks struct {
 	// FetchBlob handles the core logic for GET /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
-	FetchBlob func(r Request, hash blossom.Hash, ext string) (io.ReadSeekCloser, *blossom.Error)
+	FetchBlob func(r Request, hash blossom.Hash, ext string) (blossom.Blob, *blossom.Error)
 
 	// FetchMeta handles the core logic for HEAD /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
@@ -93,20 +75,26 @@ type OnHooks struct {
 	Delete func(r Request, hash blossom.Hash) *blossom.Error
 
 	// Upload handles the core logic for PUT /upload as per BUD-02.
+	// If the returned blob descriptor has an empty URL, the server will automatically derive it from the
+	// baseURL, the hash and the type of the blob.
 	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/02.md
-	Upload func(r Request, hints UploadHints, data io.Reader) (blossom.BlobMeta, *blossom.Error)
+	Upload func(r Request, hints UploadHints, data io.Reader) (blossom.BlobDescriptor, *blossom.Error)
 
 	// Mirror handles the core logic for PUT /mirror as per BUD-04.
 	// The url has been previously validated to be a non-nil and valid blossom URL.
+	// If the returned blob descriptor has an empty URL, the server will automatically derive it from the
+	// baseURL, the hash and the type of the blob.
 	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/04.md
-	Mirror func(r Request, url *url.URL) (blossom.BlobMeta, *blossom.Error)
+	Mirror func(r Request, url *url.URL) (blossom.BlobDescriptor, *blossom.Error)
 
 	// Media handles the core logic for PUT /media as per BUD-05.
+	// If the returned blob descriptor has an empty URL, the server will automatically derive it from the
+	// baseURL, the hash and the type of the blob.
 	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/05.md
-	Media func(r Request, hints UploadHints, data io.Reader) (blossom.BlobMeta, *blossom.Error)
+	Media func(r Request, hints UploadHints, data io.Reader) (blossom.BlobDescriptor, *blossom.Error)
 
 	// Report handles the core logic for PUT /report as per BUD-09.
 	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
@@ -121,7 +109,7 @@ func NewOnHooks() OnHooks {
 	}
 }
 
-func defaultFetchBlob(r Request, hash blossom.Hash, ext string) (io.ReadSeekCloser, *blossom.Error) {
+func defaultFetchBlob(r Request, hash blossom.Hash, ext string) (blossom.Blob, *blossom.Error) {
 	slog.Info("received GET request", "hash", hash.Hex(), "ext", ext, "ip", r.IP().Group())
 	return nil, &blossom.Error{Code: http.StatusNotFound, Reason: "The FetchBlob hook is not configured"}
 }
@@ -129,4 +117,22 @@ func defaultFetchBlob(r Request, hash blossom.Hash, ext string) (io.ReadSeekClos
 func defaultFetchMeta(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
 	slog.Info("received HEAD request", "hash", hash.Hex(), "ext", ext, "ip", r.IP().Group())
 	return "", 0, &blossom.Error{Code: http.StatusNotFound, Reason: "The FetchMeta hook is not configured"}
+}
+
+// Slice is an internal type used to simplify registration of hooks.
+type slice[T any] []T
+
+// Append adds hooks to the end of the slice, in the provided order.
+func (s *slice[T]) Append(hooks ...T) {
+	*s = append(*s, hooks...)
+}
+
+// Prepend adds hooks to the start of the slice, in the provided order.
+func (s *slice[T]) Prepend(hooks ...T) {
+	*s = append(hooks, *s...)
+}
+
+// Clear resets the slice, removing all registered hooks.
+func (s *slice[T]) Clear() {
+	*s = nil
 }

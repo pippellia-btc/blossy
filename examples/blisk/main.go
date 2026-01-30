@@ -44,11 +44,11 @@ func main() {
 	}
 }
 
-func LoadBlob(r blossy.Request, hash blossom.Hash, ext string) (io.ReadSeekCloser, *blossom.Error) {
+func LoadBlob(r blossy.Request, hash blossom.Hash, ext string) (blossom.Blob, *blossom.Error) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	blob, err := store.Load(ctx, hash)
+	file, err := store.Load(ctx, hash)
 	if errors.Is(err, blisk.ErrNotFound) {
 		return nil, &blossom.Error{Code: 404, Reason: "Blob not found"}
 	}
@@ -56,6 +56,10 @@ func LoadBlob(r blossy.Request, hash blossom.Hash, ext string) (io.ReadSeekClose
 		return nil, &blossom.Error{Code: 500, Reason: err.Error()}
 	}
 
+	blob, err := blossom.BlobFromFile(file)
+	if err != nil {
+		return nil, &blossom.Error{Code: 500, Reason: err.Error()}
+	}
 	return blob, nil
 }
 
@@ -74,16 +78,21 @@ func LoadMeta(r blossy.Request, hash blossom.Hash, ext string) (string, int64, *
 	return meta.Type, meta.Size, nil
 }
 
-func SaveBlob(r blossy.Request, hints blossy.UploadHints, data io.Reader) (blossom.BlobMeta, *blossom.Error) {
+func SaveBlob(r blossy.Request, hints blossy.UploadHints, data io.Reader) (blossom.BlobDescriptor, *blossom.Error) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	meta, err := store.Save(ctx, data, r.Pubkey())
 	if err != nil {
-		return blossom.BlobMeta{}, &blossom.Error{Code: 500, Reason: err.Error()}
+		return blossom.BlobDescriptor{}, &blossom.Error{Code: 500, Reason: err.Error()}
 	}
 
-	return meta, nil
+	return blossom.BlobDescriptor{
+		Hash:     meta.Hash,
+		Size:     meta.Size,
+		Type:     meta.Type,
+		Uploaded: meta.CreatedAt,
+	}, nil
 }
 
 func DeleteBlob(r blossy.Request, hash blossom.Hash) *blossom.Error {

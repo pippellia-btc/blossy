@@ -5,16 +5,6 @@ import (
 	"github.com/pippellia-btc/blossom"
 )
 
-// BlobDescriptor represent a description of a blossom blob.
-// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/02.md#blob-descriptor
-type BlobDescriptor struct {
-	URL      string `json:"url"`    // Depends on the [Server] base URL
-	SHA256   string `json:"sha256"` // Hex-encoded SHA256 hash
-	Size     int64  `json:"size"`
-	Type     string `json:"type"`
-	Uploaded int64  `json:"uploaded"` // Unix timestamp
-}
-
 // UploadHints contains hints about the uploaded blob as reported by the client.
 // They can be used for rejection or optimization purposes, but they must not be trusted
 // as they can be easily spoofed.

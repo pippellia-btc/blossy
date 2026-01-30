@@ -140,14 +140,11 @@ func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data, err := s.On.FetchBlob(request, request.hash, request.ext)
+	blob, err := s.On.FetchBlob(request, request.hash, request.ext)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
-
-	blob := blossom.Blob{Data: data}
-	defer data.Close()
 
 	if err := blossom.WriteBlob(w, blob); err != nil {
 		s.log.Error("failure in GET /<sha256>", "error", err)
@@ -236,23 +233,20 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	meta, err := s.On.Upload(request, request.hints, request.body)
+	desc, err := s.On.Upload(request, request.hints, request.body)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
 
-	descriptor := BlobDescriptor{
-		URL:      s.Sys.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
-		SHA256:   meta.Hash.Hex(),
-		Size:     meta.Size,
-		Type:     meta.Type,
-		Uploaded: meta.CreatedAt,
+	if desc.URL == "" {
+		// derive the URL if not set
+		desc.URL = s.Sys.baseURL + "/" + desc.Hash.Hex() + blossom.ExtFromType(desc.Type)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(descriptor); err != nil {
-		s.log.Error("failed to encode blob descriptor", "error", err, "hash", meta.Hash)
+	if err := json.NewEncoder(w).Encode(desc); err != nil {
+		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
 	}
 }
 
@@ -305,23 +299,20 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	meta, err := s.On.Mirror(request, request.url)
+	desc, err := s.On.Mirror(request, request.url)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
 
-	descriptor := BlobDescriptor{
-		URL:      s.Sys.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
-		SHA256:   meta.Hash.Hex(),
-		Size:     meta.Size,
-		Type:     meta.Type,
-		Uploaded: meta.CreatedAt,
+	if desc.URL == "" {
+		// derive the URL if not set
+		desc.URL = s.Sys.baseURL + "/" + desc.Hash.Hex() + blossom.ExtFromType(desc.Type)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(descriptor); err != nil {
-		s.log.Error("failed to encode blob descriptor", "error", err, "hash", meta.Hash)
+	if err := json.NewEncoder(w).Encode(desc); err != nil {
+		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
 	}
 }
 
@@ -350,23 +341,20 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	meta, err := s.On.Media(request, request.hints, request.body)
+	desc, err := s.On.Media(request, request.hints, request.body)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
 
-	descriptor := BlobDescriptor{
-		URL:      s.Sys.baseURL + "/" + meta.Hash.Hex() + meta.Extension(),
-		SHA256:   meta.Hash.Hex(),
-		Size:     meta.Size,
-		Type:     meta.Type,
-		Uploaded: meta.CreatedAt,
+	if desc.URL == "" {
+		// derive the URL if not set
+		desc.URL = s.Sys.baseURL + "/" + desc.Hash.Hex() + blossom.ExtFromType(desc.Type)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(descriptor); err != nil {
-		s.log.Error("failed to encode blob descriptor", "error", err, "hash", meta.Hash)
+	if err := json.NewEncoder(w).Encode(desc); err != nil {
+		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
 	}
 }
 
