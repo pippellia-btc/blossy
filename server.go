@@ -87,6 +87,8 @@ func (s *Server) StartAndServe(ctx context.Context, address string) error {
 	case <-ctx.Done():
 		ctx, cancel := context.WithTimeout(context.Background(), s.settings.HTTP.shutdownTimeout)
 		defer cancel()
+
+		s.log.Info("shutting down the blossom server", "address", address)
 		return server.Shutdown(ctx)
 
 	case err := <-exitErr:
