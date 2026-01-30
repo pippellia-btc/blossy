@@ -54,6 +54,15 @@ func (s *Server) TotalRequests() int {
 	return int(s.nextRequest.Load())
 }
 
+// deriveURL derives the URL for a blob descriptor.
+// If the server base URL is not set, it returns an error.
+func (s *Server) deriveURL(desc blossom.BlobDescriptor) (string, error) {
+	if s.Sys.baseURL == "" {
+		return "", errors.New("server base url is not set")
+	}
+	return s.Sys.baseURL + "/" + desc.Hash.Hex() + blossom.ExtFromType(desc.Type), nil
+}
+
 // StartAndServe starts the blossom server, listens to the provided address and handles http requests.
 //
 // It's a blocking operation, that stops only when the context gets cancelled.
@@ -86,7 +95,7 @@ func (s *Server) StartAndServe(ctx context.Context, address string) error {
 
 // ServeHTTP implements the [http.Handler] interface, routing http requests to the appropriate [Hook].
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	SetCORS(w)
+	setCORS(w)
 
 	switch {
 	case r.URL.Path == "/upload" && r.Method == http.MethodPut:
@@ -145,6 +154,7 @@ func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
 		blossom.WriteError(w, *err)
 		return
 	}
+	defer blob.Close()
 
 	if err := blossom.WriteBlob(w, blob); err != nil {
 		s.log.Error("failure in GET /<sha256>", "error", err)
@@ -241,7 +251,13 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 
 	if desc.URL == "" {
 		// derive the URL if not set
-		desc.URL = s.Sys.baseURL + "/" + desc.Hash.Hex() + blossom.ExtFromType(desc.Type)
+		url, err := s.deriveURL(desc)
+		if err != nil {
+			s.log.Error("handle upload: failed to derive URL", "error", err)
+			blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError, Reason: err.Error()})
+			return
+		}
+		desc.URL = url
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -307,7 +323,13 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 
 	if desc.URL == "" {
 		// derive the URL if not set
-		desc.URL = s.Sys.baseURL + "/" + desc.Hash.Hex() + blossom.ExtFromType(desc.Type)
+		url, err := s.deriveURL(desc)
+		if err != nil {
+			s.log.Error("handle mirror: failed to derive URL", "error", err)
+			blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError, Reason: err.Error()})
+			return
+		}
+		desc.URL = url
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -349,7 +371,13 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 
 	if desc.URL == "" {
 		// derive the URL if not set
-		desc.URL = s.Sys.baseURL + "/" + desc.Hash.Hex() + blossom.ExtFromType(desc.Type)
+		url, err := s.deriveURL(desc)
+		if err != nil {
+			s.log.Error("handle media: failed to derive URL", "error", err)
+			blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError, Reason: err.Error()})
+			return
+		}
+		desc.URL = url
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -413,8 +441,8 @@ func (s *Server) HandleReport(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// SetCORS sets CORS headers as required by BUD-01.
-func SetCORS(w http.ResponseWriter) {
+// setCORS sets CORS headers as required by BUD-01.
+func setCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Authorization, *")

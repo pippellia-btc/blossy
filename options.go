@@ -81,10 +81,11 @@ func newHTTPSettings() httpSettings {
 func (s *Server) validate() error {
 	// sys
 	if s.settings.Sys.baseURL == "" {
-		return errors.New("server base url cannot be empty")
-	}
-	if _, err := url.Parse(s.settings.Sys.baseURL); err != nil {
-		s.log.Warn("invalid server base url", "error", err)
+		s.log.Warn("server base url is not set. This means you will have to manually set the URL of all blob descriptors returned")
+	} else {
+		if _, err := url.Parse(s.settings.Sys.baseURL); err != nil {
+			return errors.New("invalid server base url: " + err.Error())
+		}
 	}
 
 	// http
