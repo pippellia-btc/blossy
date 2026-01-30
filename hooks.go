@@ -59,7 +59,7 @@ type RejectHooks struct {
 // Each function is called only after the corresponding input has passed all RejectHooks (if any).
 //
 // OnHooks are typically used to implement custom processing, persistence,
-// logging, authorization, or other side effects in response to relay activity.
+// logging, authorization, or other side effects.
 type OnHooks struct {
 	// FetchBlob handles the core logic for GET /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
