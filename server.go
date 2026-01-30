@@ -138,21 +138,21 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // HandleDownload handles the GET /<sha256>.<ext> endpoint.
 func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
-	request, err := parseFetch(r)
+	req, hash, ext, err := parseFetch(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
-	request.id = s.nextRequest.Add(1)
+	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Download {
-		if err = reject(request, request.hash, request.ext); err != nil {
+		if err = reject(req, hash, ext); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	delivery, err := s.On.Download(request, request.hash, request.ext)
+	delivery, err := s.On.Download(req, hash, ext)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
@@ -184,21 +184,21 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 
 // HandleCheck handles the HEAD /<sha256>.<ext> endpoint.
 func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
-	request, err := parseFetch(r)
+	req, hash, ext, err := parseFetch(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
-	request.id = s.nextRequest.Add(1)
+	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Check {
-		if err = reject(request, request.hash, request.ext); err != nil {
+		if err = reject(req, hash, ext); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	mime, size, err := s.On.Check(request, request.hash, request.ext)
+	mime, size, err := s.On.Check(req, hash, ext)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
@@ -218,21 +218,21 @@ func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request, err := parseDelete(r)
+	req, hash, err := parseDelete(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
-	request.id = s.nextRequest.Add(1)
+	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Delete {
-		if err = reject(request, request.hash); err != nil {
+		if err = reject(req, hash); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	if err = s.On.Delete(request, request.hash); err != nil {
+	if err = s.On.Delete(req, hash); err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
@@ -248,23 +248,23 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request, err := parseUpload(r)
+	req, hints, body, err := parseUpload(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
 
-	request.id = s.nextRequest.Add(1)
-	defer request.body.Close()
+	req.id = s.nextRequest.Add(1)
+	defer body.Close()
 
 	for _, reject := range s.Reject.Upload {
-		if err = reject(request, request.hints); err != nil {
+		if err = reject(req, hints); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	desc, err := s.On.Upload(request, request.hints, request.body)
+	desc, err := s.On.Upload(req, hints, body)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
@@ -296,15 +296,15 @@ func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request, err := parseUploadCheck(r)
+	req, hints, err := parseUploadCheck(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
-	request.id = s.nextRequest.Add(1)
+	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Upload {
-		if err = reject(request, request.hints); err != nil {
+		if err = reject(req, hints); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
@@ -321,22 +321,22 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request, err := parseMirror(r)
+	req, url, err := parseMirror(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
 
-	request.id = s.nextRequest.Add(1)
+	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Mirror {
-		if err = reject(request, request.url); err != nil {
+		if err = reject(req, url); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	desc, err := s.On.Mirror(request, request.url)
+	desc, err := s.On.Mirror(req, url)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
@@ -368,23 +368,23 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request, err := parseUpload(r)
+	req, hints, body, err := parseUpload(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
 
-	request.id = s.nextRequest.Add(1)
-	defer request.body.Close()
+	req.id = s.nextRequest.Add(1)
+	defer body.Close()
 
 	for _, reject := range s.Reject.Media {
-		if err = reject(request, request.hints); err != nil {
+		if err = reject(req, hints); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	desc, err := s.On.Media(request, request.hints, request.body)
+	desc, err := s.On.Media(req, hints, body)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
@@ -416,15 +416,15 @@ func (s *Server) HandleMediaCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request, err := parseUploadCheck(r)
+	req, hints, err := parseUploadCheck(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
-	request.id = s.nextRequest.Add(1)
+	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Media {
-		if err = reject(request, request.hints); err != nil {
+		if err = reject(req, hints); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
@@ -441,21 +441,21 @@ func (s *Server) HandleReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request, err := parseReport(r)
+	req, report, err := parseReport(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
-	request.id = s.nextRequest.Add(1)
+	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Report {
-		if err = reject(request, request.report); err != nil {
+		if err = reject(req, report); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	if err = s.On.Report(request, request.report); err != nil {
+	if err = s.On.Report(req, report); err != nil {
 		blossom.WriteError(w, *err)
 		return
 	}
