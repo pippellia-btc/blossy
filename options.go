@@ -18,11 +18,25 @@ func WithBaseURL(url string) Option {
 	}
 }
 
-// WithLogger sets the structured logger (*slog.Logger) used by the relay for all logging operations.
+// WithLogger sets the structured logger (*slog.Logger) used by the server for all logging operations.
 // If not set, a default logger will be used.
 func WithLogger(l *slog.Logger) Option {
 	return func(s *Server) {
 		s.log = l
+	}
+}
+
+// WithRangeSupport enables support for HTTP range requests (RFC 7233).
+//
+// When enabled, the server advertises "Accept-Ranges: bytes" on HEAD requests
+// and serves partial content (206 Partial Content) for GET requests with a Range header,
+// provided the blob is seekable (implements [io.ReadSeeker]).
+//
+// This is useful for streaming, resumable downloads, and optimizing bandwidth.
+// By default, range support is disabled to ensure clients always receive full, verifiable content.
+func WithRangeSupport() Option {
+	return func(s *Server) {
+		s.settings.HTTP.acceptRanges = true
 	}
 }
 
@@ -44,7 +58,7 @@ func WithShutdownTimeout(d time.Duration) Option {
 	return func(s *Server) { s.settings.HTTP.shutdownTimeout = d }
 }
 
-// settings holds the configurable parameters for the Relay.
+// settings holds the configurable parameters for the server.
 type settings struct {
 	Sys  systemSettings
 	HTTP httpSettings
@@ -57,14 +71,15 @@ func newSettings() settings {
 }
 
 type systemSettings struct {
-	// BaseURL is the server base URL, used in the returned [BlobDescriptor].
+	// BaseURL is the server base URL, used to derive the URL of a blob descriptor when it was not manually set.
 	// It will also be used in validating auth (not yet implemented, see auth.go).
 	baseURL string
 }
 
-// httpSettings holds the configurable parameters for the default HTTP server, which is
-// used when calling [Server.StartAndServe].
 type httpSettings struct {
+	acceptRanges bool
+
+	// settings for the default HTTP server, which is used when calling [Server.StartAndServe].
 	readHeaderTimeout time.Duration
 	idleTimeout       time.Duration
 	shutdownTimeout   time.Duration

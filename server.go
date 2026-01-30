@@ -168,8 +168,16 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 		}
 		defer blob.Close()
 
-		if err := blossom.WriteBlob(w, blob); err != nil {
+		var err error
+		if s.settings.HTTP.acceptRanges {
+			err = blossom.ServeBlob(w, r, blob)
+		} else {
+			err = blossom.WriteBlob(w, blob)
+		}
+
+		if err != nil {
 			s.log.Error("failure in GET /<sha256>", "error", err)
+			return
 		}
 
 	case redirectedBlob:
@@ -178,7 +186,6 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 	default:
 		s.log.Error("handle download: unknown blob delivery type", "type", reflect.TypeOf(delivery))
 		blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError, Reason: "Unknown blob delivery type"})
-		return
 	}
 }
 
@@ -204,9 +211,11 @@ func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if s.settings.HTTP.acceptRanges {
+		w.Header().Set("Accept-Ranges", "bytes")
+	}
 	w.Header().Set("Content-Type", mime)
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
-	w.Header().Set("Accept-Ranges", "bytes")
 }
 
 // HandleDelete handles the DELETE /<sha256> endpoint.
