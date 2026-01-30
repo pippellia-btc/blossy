@@ -25,7 +25,7 @@ type Server struct {
 
 // NewServer creates a new Server instance with sane defaults and customizable internal behavior.
 // Customize its structure with functional options (e.g., [WithBaseURL], [WithReadHeaderTimeout]).
-// Customize its behaviour by defining On.FetchBlob, On.Upload and other [Hooks].
+// Customize its behaviour by defining On.Download, On.Upload and other [Hooks].
 //
 // Example:
 //
@@ -120,10 +120,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.HandleReport(w, r)
 
 	case r.Method == http.MethodGet:
-		s.HandleFetchBlob(w, r)
+		s.HandleDownload(w, r)
 
 	case r.Method == http.MethodHead:
-		s.HandleFetchMeta(w, r)
+		s.HandleCheck(w, r)
 
 	case r.Method == http.MethodDelete:
 		s.HandleDelete(w, r)
@@ -136,8 +136,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleFetchBlob handles the GET /<sha256>.<ext> endpoint.
-func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
+// HandleDownload handles the GET /<sha256>.<ext> endpoint.
+func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 	request, err := parseFetch(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
@@ -145,14 +145,14 @@ func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
 	}
 	request.id = s.nextRequest.Add(1)
 
-	for _, reject := range s.Reject.FetchBlob {
+	for _, reject := range s.Reject.Download {
 		if err = reject(request, request.hash, request.ext); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	delivery, err := s.On.FetchBlob(request, request.hash, request.ext)
+	delivery, err := s.On.Download(request, request.hash, request.ext)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return
@@ -162,7 +162,7 @@ func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
 	case servedBlob:
 		blob := d.Blob
 		if blob == nil {
-			s.log.Error("handle fetch blob: blob is nil")
+			s.log.Error("handle download: blob is nil")
 			blossom.WriteError(w, blossom.Error{Code: http.StatusNotFound, Reason: "Blob not found"})
 			return
 		}
@@ -176,14 +176,14 @@ func (s *Server) HandleFetchBlob(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, d.url, d.code)
 
 	default:
-		s.log.Error("handle fetch blob: unknown blob delivery type", "type", reflect.TypeOf(delivery))
+		s.log.Error("handle download: unknown blob delivery type", "type", reflect.TypeOf(delivery))
 		blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError, Reason: "Unknown blob delivery type"})
 		return
 	}
 }
 
-// HandleFetchMeta handles the HEAD /<sha256>.<ext> endpoint.
-func (s *Server) HandleFetchMeta(w http.ResponseWriter, r *http.Request) {
+// HandleCheck handles the HEAD /<sha256>.<ext> endpoint.
+func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
 	request, err := parseFetch(r)
 	if err != nil {
 		blossom.WriteError(w, *err)
@@ -191,14 +191,14 @@ func (s *Server) HandleFetchMeta(w http.ResponseWriter, r *http.Request) {
 	}
 	request.id = s.nextRequest.Add(1)
 
-	for _, reject := range s.Reject.FetchMeta {
+	for _, reject := range s.Reject.Check {
 		if err = reject(request, request.hash, request.ext); err != nil {
 			blossom.WriteError(w, *err)
 			return
 		}
 	}
 
-	mime, size, err := s.On.FetchMeta(request, request.hash, request.ext)
+	mime, size, err := s.On.Check(request, request.hash, request.ext)
 	if err != nil {
 		blossom.WriteError(w, *err)
 		return

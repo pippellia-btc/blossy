@@ -31,11 +31,11 @@ func DefaultHooks() Hooks {
 // These hooks are useful for enforcing access policies, validating input,
 // or applying rate limits before the server performs further processing.
 type RejectHooks struct {
-	// FetchBlob is invoked before processing a GET /<hash>.<ext> request.
-	FetchBlob slice[func(r Request, hash blossom.Hash, ext string) *blossom.Error]
+	// Download is invoked before processing a GET /<hash>.<ext> request.
+	Download slice[func(r Request, hash blossom.Hash, ext string) *blossom.Error]
 
-	// FetchMeta is invoked before processing a HEAD /<hash>.<ext> request.
-	FetchMeta slice[func(r Request, hash blossom.Hash, ext string) *blossom.Error]
+	// Check is invoked before processing a HEAD /<hash>.<ext> request.
+	Check slice[func(r Request, hash blossom.Hash, ext string) *blossom.Error]
 
 	// Delete is invoked before processing a DELETE /<hash> request.
 	Delete slice[func(r Request, hash blossom.Hash) *blossom.Error]
@@ -61,13 +61,13 @@ type RejectHooks struct {
 // OnHooks are typically used to implement custom processing, persistence,
 // logging, authorization, or other side effects.
 type OnHooks struct {
-	// FetchBlob handles the core logic for GET /<sha256>.<ext> as per BUD-01.
+	// Download handles the core logic for GET /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
-	FetchBlob func(r Request, hash blossom.Hash, ext string) (BlobDelivery, *blossom.Error)
+	Download func(r Request, hash blossom.Hash, ext string) (BlobDelivery, *blossom.Error)
 
-	// FetchMeta handles the core logic for HEAD /<sha256>.<ext> as per BUD-01.
+	// Check handles the core logic for HEAD /<sha256>.<ext> as per BUD-01.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
-	FetchMeta func(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error)
+	Check func(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error)
 
 	// Delete handles the core logic for DELETE /<sha256> as per BUD-02.
 	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
@@ -104,19 +104,19 @@ type OnHooks struct {
 
 func NewOnHooks() OnHooks {
 	return OnHooks{
-		FetchBlob: defaultFetchBlob,
-		FetchMeta: defaultFetchMeta,
+		Download: defaultDownload,
+		Check:    defaultCheck,
 	}
 }
 
-func defaultFetchBlob(r Request, hash blossom.Hash, ext string) (BlobDelivery, *blossom.Error) {
+func defaultDownload(r Request, hash blossom.Hash, ext string) (BlobDelivery, *blossom.Error) {
 	slog.Info("received GET request", "hash", hash.Hex(), "ext", ext, "ip", r.IP().Group())
-	return nil, &blossom.Error{Code: http.StatusNotFound, Reason: "The FetchBlob hook is not configured"}
+	return nil, &blossom.Error{Code: http.StatusNotFound, Reason: "The Download hook is not configured"}
 }
 
-func defaultFetchMeta(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
+func defaultCheck(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
 	slog.Info("received HEAD request", "hash", hash.Hex(), "ext", ext, "ip", r.IP().Group())
-	return "", 0, &blossom.Error{Code: http.StatusNotFound, Reason: "The FetchMeta hook is not configured"}
+	return "", 0, &blossom.Error{Code: http.StatusNotFound, Reason: "The Check hook is not configured"}
 }
 
 // Slice is an internal type used to simplify registration of hooks.

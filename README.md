@@ -64,7 +64,7 @@ Below is a silly example that illustrates blossy's flexibility.
 ```golang
 func main() {
 	// ...
-	blossom.Reject.FetchBlob.Append(IsWord)
+	blossom.Reject.Download.Append(IsWord)
 	blossom.Reject.Upload.Append(BadIP)
     blossom.On.Upload = Save // your custom DB save
 }

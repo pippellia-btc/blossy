@@ -33,8 +33,8 @@ func main() {
 		panic(err)
 	}
 
-	blossom.On.FetchBlob = LoadBlob
-	blossom.On.FetchMeta = LoadMeta
+	blossom.On.Download = LoadBlob
+	blossom.On.Check = LoadMeta
 	blossom.On.Upload = SaveBlob
 	blossom.On.Delete = DeleteBlob
 

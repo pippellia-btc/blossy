@@ -26,7 +26,7 @@ func main() {
 		panic(err)
 	}
 
-	blossom.Reject.FetchBlob.Append(IsWord)
+	blossom.Reject.Download.Append(IsWord)
 	blossom.Reject.Upload.Append(BadIP)
 
 	err = blossom.StartAndServe(ctx, "localhost:3335")

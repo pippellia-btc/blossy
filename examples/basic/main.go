@@ -21,8 +21,8 @@ func main() {
 		panic(err)
 	}
 
-	blossom.On.FetchBlob = BlobNotFound
-	blossom.On.FetchMeta = MetaNotFound
+	blossom.On.Download = BlobNotFound
+	blossom.On.Check = MetaNotFound
 
 	err = blossom.StartAndServe(ctx, "localhost:3335")
 	if err != nil {
