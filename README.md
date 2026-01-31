@@ -21,7 +21,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/pippellia-btc/rely"
+	"github.com/pippellia-btc/blossy"
 )
 
 func main() {
