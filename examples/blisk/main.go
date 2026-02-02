@@ -63,19 +63,19 @@ func LoadBlob(r blossy.Request, hash blossom.Hash, ext string) (blossy.BlobDeliv
 	return blossy.Serve(blob), nil
 }
 
-func LoadMeta(r blossy.Request, hash blossom.Hash, ext string) (string, int64, *blossom.Error) {
+func LoadMeta(r blossy.Request, hash blossom.Hash, ext string) (blossy.MetaDelivery, *blossom.Error) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	meta, err := store.Info(ctx, hash)
 	if errors.Is(err, blisk.ErrNotFound) {
-		return "", 0, blossom.ErrNotFound("Blob not found")
+		return nil, blossom.ErrNotFound("Blob not found")
 	}
 	if err != nil {
-		return "", 0, blossom.ErrInternal(err.Error())
+		return nil, blossom.ErrInternal(err.Error())
 	}
 
-	return meta.Type, meta.Size, nil
+	return blossy.Found(meta.Type, meta.Size), nil
 }
 
 func SaveBlob(r blossy.Request, hints blossy.UploadHints, data io.Reader) (blossom.BlobDescriptor, *blossom.Error) {

@@ -35,7 +35,7 @@ func BlobNotFound(r blossy.Request, hash blossom.Hash, ext string) (blossy.BlobD
 	return nil, blossom.ErrNotFound("Blob not found")
 }
 
-func MetaNotFound(r blossy.Request, hash blossom.Hash, ext string) (string, int64, *blossom.Error) {
+func MetaNotFound(r blossy.Request, hash blossom.Hash, ext string) (blossy.MetaDelivery, *blossom.Error) {
 	slog.Info("received HEAD request", "hash", hash, "ext", ext, "ip", r.IP().Group())
-	return "", 0, blossom.ErrNotFound("Blob not found")
+	return nil, blossom.ErrNotFound("Blob not found")
 }

@@ -61,12 +61,14 @@ type RejectHooks struct {
 // logging, authorization, or other side effects.
 type OnHooks struct {
 	// Download handles the core logic for GET /<sha256>.<ext> as per BUD-01.
+	// Use [Serve] to serve a [blossom.Blob] directly to the client or [Redirect] to redirect the client to another URL.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
 	Download func(r Request, hash blossom.Hash, ext string) (BlobDelivery, *blossom.Error)
 
 	// Check handles the core logic for HEAD /<sha256>.<ext> as per BUD-01.
+	// Use [Found] to return blob metadata directly, or [Redirect] to redirect the client to another URL.
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/01.md
-	Check func(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error)
+	Check func(r Request, hash blossom.Hash, ext string) (MetaDelivery, *blossom.Error)
 
 	// Delete handles the core logic for DELETE /<sha256> as per BUD-02.
 	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
@@ -113,9 +115,9 @@ func defaultDownload(r Request, hash blossom.Hash, ext string) (BlobDelivery, *b
 	return nil, blossom.ErrNotFound("The Download hook is not configured")
 }
 
-func defaultCheck(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
+func defaultCheck(r Request, hash blossom.Hash, ext string) (MetaDelivery, *blossom.Error) {
 	slog.Info("received HEAD request", "hash", hash.Hex(), "ext", ext, "ip", r.IP().Group())
-	return "", 0, blossom.ErrNotFound("The Check hook is not configured")
+	return nil, blossom.ErrNotFound("The Check hook is not configured")
 }
 
 // Slice is an internal type used to simplify registration of hooks.

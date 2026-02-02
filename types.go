@@ -10,30 +10,56 @@ import (
 // BlobDelivery represents how a blob should be delivered to the client.
 // Use [Serve] to serve a [blossom.Blob] directly to the client or [Redirect] to redirect the client to another URL.
 type BlobDelivery interface {
-	seal() // unexported method seals the interface
+	sealBlob() // unexported method seals the interface
+}
+
+// MetaDelivery represents how blob metadata should be delivered to the client.
+// Use [Found] to return the metadata directly, or [Redirect] to redirect the client to another URL.
+type MetaDelivery interface {
+	sealMeta() // unexported method seals the interface
+}
+
+// redirect can be used as both [BlobDelivery] and [MetaDelivery].
+type redirect interface {
+	BlobDelivery
+	MetaDelivery
 }
 
 type servedBlob struct {
 	blossom.Blob
 }
 
-func (servedBlob) seal() {}
+func (servedBlob) sealBlob() {}
 
 type redirectedBlob struct {
 	url  string
 	code int
 }
 
-func (redirectedBlob) seal() {}
+func (redirectedBlob) sealBlob() {}
+func (redirectedBlob) sealMeta() {}
+
+type foundBlob struct {
+	mime string
+	size int64
+}
+
+func (foundBlob) sealMeta() {}
 
 // Serve creates a BlobDelivery that serves the blob directly to the client.
 func Serve(blob blossom.Blob) BlobDelivery {
 	return servedBlob{blob}
 }
 
-// Redirect creates a BlobDelivery that redirects the client to the given URL.
+// Found creates a MetaDelivery that returns the blob metadata directly to the client.
+func Found(mime string, size int64) MetaDelivery {
+	return foundBlob{mime: mime, size: size}
+}
+
+// Redirect creates a response that redirects the client to the given URL.
+// It can be used as both [BlobDelivery] and [MetaDelivery].
 // Common status codes are http.StatusFound (302) or http.StatusMovedPermanently (301).
-func Redirect(url string, code int) BlobDelivery {
+func Redirect(url string, code int) redirect {
 	if code == 0 {
 		code = http.StatusFound
 	}

@@ -152,15 +152,15 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	delivery, err := s.On.Download(req, hash, ext)
+	result, err := s.On.Download(req, hash, ext)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
 
-	switch d := delivery.(type) {
+	switch result := result.(type) {
 	case servedBlob:
-		blob := d.Blob
+		blob := result.Blob
 		if blob == nil {
 			s.log.Error("handle download: blob is nil")
 			blossom.WriteError(w, blossom.ErrNotFound("Blob not found"))
@@ -181,10 +181,10 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case redirectedBlob:
-		http.Redirect(w, r, d.url, d.code)
+		http.Redirect(w, r, result.url, result.code)
 
 	default:
-		s.log.Error("handle download: unknown blob delivery type", "type", reflect.TypeOf(delivery))
+		s.log.Error("handle download: unknown blob delivery type", "type", reflect.TypeOf(result))
 		blossom.WriteError(w, blossom.ErrInternal("Unknown blob delivery type"))
 	}
 }
@@ -205,18 +205,28 @@ func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	mime, size, err := s.On.Check(req, hash, ext)
+	result, err := s.On.Check(req, hash, ext)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
 
-	if s.settings.HTTP.acceptRanges {
-		w.Header().Set("Accept-Ranges", "bytes")
+	switch result := result.(type) {
+	case foundBlob:
+		if s.settings.HTTP.acceptRanges {
+			w.Header().Set("Accept-Ranges", "bytes")
+		}
+		w.Header().Set("Content-Type", result.mime)
+		w.Header().Set("Content-Length", strconv.FormatInt(result.size, 10))
+		w.WriteHeader(http.StatusOK)
+
+	case redirectedBlob:
+		http.Redirect(w, r, result.url, result.code)
+
+	default:
+		s.log.Error("handle check: unknown check result type", "type", reflect.TypeOf(result))
+		blossom.WriteError(w, blossom.ErrInternal("Unknown check result type"))
 	}
-	w.Header().Set("Content-Type", mime)
-	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
-	w.WriteHeader(http.StatusOK)
 }
 
 // HandleDelete handles the DELETE /<sha256> endpoint.
