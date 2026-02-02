@@ -48,9 +48,9 @@ Fine-tune core parameters using functional options:
 
 ```golang
 blossom := blossy.NewServer(
-	blossy.WithBaseURL("myDomain.com"),	    // required for blob descriptors and auth
-	blossy.WithLogger(myLogger),		    // configure the server logger
-	blossy.WithReadHeaderTimeout(timeout)	// choose http security settings
+	blossy.WithBaseURL("https://myDomain.com"),		// for blob descriptors and auth
+	blossy.WithLogger(myLogger),					// configure the server logger
+	blossy.WithRangeSupport()						// enables support for HTTP range requests
 )
 ```
 

@@ -30,7 +30,7 @@ type Server struct {
 // Example:
 //
 //	blossom := NewServer(
-//	    WithBaseURL("example.com"),
+//	    WithBaseURL("https://example.com"),
 //	    WithReadHeaderTimeout(5 * time.Second),
 //	)
 func NewServer(opts ...Option) (*Server, error) {
