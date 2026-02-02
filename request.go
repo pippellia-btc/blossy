@@ -116,6 +116,14 @@ func parseUpload(r *http.Request) (request, UploadHints, io.ReadCloser, *blossom
 		}
 	}
 
+	if sha := r.Header.Get("Content-Digest"); sha != "" {
+		hash, err := blossom.ParseHash(sha)
+		if err != nil {
+			return request{}, UploadHints{}, nil, blossom.ErrBadRequest("'Content-Digest' header is invalid: " + err.Error())
+		}
+		hints.Hash = hash
+	}
+
 	req := request{
 		ip:     GetIP(r),
 		pubkey: pubkey,
