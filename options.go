@@ -87,6 +87,7 @@ type systemSettings struct {
 }
 
 type httpSettings struct {
+	// AcceptRanges enables support for HTTP range requests (RFC 7233).
 	acceptRanges bool
 
 	// settings for the default HTTP server, which is used when calling [Server.StartAndServe].
