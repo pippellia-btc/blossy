@@ -60,12 +60,12 @@ func (r request) Raw() *http.Request       { return r.raw }
 func parseFetch(r *http.Request) (request, blossom.Hash, string, *blossom.Error) {
 	hash, ext, err := ParseHash(r.URL.Path)
 	if err != nil {
-		return request{}, blossom.Hash{}, "", &blossom.Error{Code: http.StatusBadRequest, Reason: err.Error()}
+		return request{}, blossom.Hash{}, "", blossom.ErrBadRequest(err.Error())
 	}
 
 	pubkey, err := parsePubkey(r.Header, VerbGet, hash)
 	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
-		return request{}, blossom.Hash{}, "", &blossom.Error{Code: http.StatusUnauthorized, Reason: err.Error()}
+		return request{}, blossom.Hash{}, "", blossom.ErrUnauthorized(err.Error())
 	}
 
 	req := request{
@@ -79,12 +79,12 @@ func parseFetch(r *http.Request) (request, blossom.Hash, string, *blossom.Error)
 func parseDelete(r *http.Request) (request, blossom.Hash, *blossom.Error) {
 	hash, _, err := ParseHash(r.URL.Path)
 	if err != nil {
-		return request{}, blossom.Hash{}, &blossom.Error{Code: http.StatusBadRequest, Reason: err.Error()}
+		return request{}, blossom.Hash{}, blossom.ErrBadRequest(err.Error())
 	}
 
 	pubkey, err := parsePubkey(r.Header, VerbDelete, hash)
 	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
-		return request{}, blossom.Hash{}, &blossom.Error{Code: http.StatusUnauthorized, Reason: err.Error()}
+		return request{}, blossom.Hash{}, blossom.ErrUnauthorized(err.Error())
 	}
 
 	req := request{
@@ -101,7 +101,7 @@ func parseUpload(r *http.Request) (request, UploadHints, io.ReadCloser, *blossom
 	// See https://github.com/hzrd149/blossom/pull/87
 	pubkey, err := parsePubkey(r.Header, VerbUpload, blossom.Hash{})
 	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
-		return request{}, UploadHints{}, nil, &blossom.Error{Code: http.StatusUnauthorized, Reason: err.Error()}
+		return request{}, UploadHints{}, nil, blossom.ErrUnauthorized(err.Error())
 	}
 
 	hints := UploadHints{
@@ -127,30 +127,30 @@ func parseUpload(r *http.Request) (request, UploadHints, io.ReadCloser, *blossom
 func parseUploadCheck(r *http.Request) (request, UploadHints, *blossom.Error) {
 	sha256 := r.Header.Get("X-SHA-256")
 	if sha256 == "" {
-		return request{}, UploadHints{}, &blossom.Error{Code: http.StatusBadRequest, Reason: "'X-SHA-256' header is missing or empty"}
+		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-SHA-256' header is missing or empty")
 	}
 	hash, err := blossom.ParseHash(sha256)
 	if err != nil {
-		return request{}, UploadHints{}, &blossom.Error{Code: http.StatusBadRequest, Reason: "'X-SHA-256' header is invalid: " + err.Error()}
+		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-SHA-256' header is invalid: " + err.Error())
 	}
 
 	cl := r.Header.Get("X-Content-Length")
 	if cl == "" {
-		return request{}, UploadHints{}, &blossom.Error{Code: http.StatusBadRequest, Reason: "'X-Content-Length' header is missing or empty"}
+		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-Content-Length' header is missing or empty")
 	}
 	size, err := strconv.ParseInt(cl, 10, 64)
 	if err != nil {
-		return request{}, UploadHints{}, &blossom.Error{Code: http.StatusBadRequest, Reason: "'X-Content-Length' header is invalid: " + err.Error()}
+		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-Content-Length' header is invalid: " + err.Error())
 	}
 
 	mime := r.Header.Get("X-Content-Type")
 	if mime == "" {
-		return request{}, UploadHints{}, &blossom.Error{Code: http.StatusBadRequest, Reason: "'X-Content-Type' header is missing or empty"}
+		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-Content-Type' header is missing or empty")
 	}
 
 	pubkey, err := parsePubkey(r.Header, VerbUpload, hash)
 	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
-		return request{}, UploadHints{}, &blossom.Error{Code: http.StatusUnauthorized, Reason: err.Error()}
+		return request{}, UploadHints{}, blossom.ErrUnauthorized(err.Error())
 	}
 
 	req := request{
@@ -180,21 +180,21 @@ func parseMirror(r *http.Request) (request, *url.URL, *blossom.Error) {
 	}
 
 	if err := dec.Decode(&payload); err != nil {
-		return request{}, nil, &blossom.Error{Code: http.StatusBadRequest, Reason: "failed to parse JSON body: " + err.Error()}
+		return request{}, nil, blossom.ErrBadRequest("failed to parse JSON body: " + err.Error())
 	}
 
 	url, err := url.Parse(payload.URL)
 	if err != nil {
-		return request{}, nil, &blossom.Error{Code: http.StatusBadRequest, Reason: "failed to parse URL: " + err.Error()}
+		return request{}, nil, blossom.ErrBadRequest("failed to parse URL: " + err.Error())
 	}
 
 	if err := ValidateBlossomURL(url); err != nil {
-		return request{}, nil, &blossom.Error{Code: http.StatusBadRequest, Reason: "invalid blossom URL: " + err.Error()}
+		return request{}, nil, blossom.ErrBadRequest("invalid blossom URL: " + err.Error())
 	}
 
 	pubkey, err := parsePubkey(r.Header, VerbUpload, hash)
 	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
-		return request{}, nil, &blossom.Error{Code: http.StatusUnauthorized, Reason: err.Error()}
+		return request{}, nil, blossom.ErrUnauthorized(err.Error())
 	}
 
 	req := request{
@@ -215,12 +215,12 @@ func parseReport(r *http.Request) (request, Report, *blossom.Error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 
 	if err := dec.Decode(&event); err != nil {
-		return request{}, Report{}, &blossom.Error{Code: http.StatusBadRequest, Reason: "failed to parse JSON body: " + err.Error()}
+		return request{}, Report{}, blossom.ErrBadRequest("failed to parse JSON body: " + err.Error())
 	}
 
 	report, err := parseReportEvent(event)
 	if err != nil {
-		return request{}, Report{}, &blossom.Error{Code: http.StatusBadRequest, Reason: err.Error()}
+		return request{}, Report{}, blossom.ErrBadRequest(err.Error())
 	}
 
 	req := request{
@@ -259,10 +259,10 @@ func ValidateBlossomURL(url *url.URL) error {
 func ReadNoMore(r io.Reader, limit int) ([]byte, *blossom.Error) {
 	data, err := io.ReadAll(io.LimitReader(r, int64(limit)))
 	if err != nil {
-		return nil, &blossom.Error{Code: http.StatusBadRequest, Reason: "failed to read body: " + err.Error()}
+		return nil, blossom.ErrBadRequest("failed to read body: " + err.Error())
 	}
 	if len(data) >= limit {
-		return nil, &blossom.Error{Code: http.StatusRequestEntityTooLarge, Reason: "body too large"}
+		return nil, blossom.ErrTooLarge("body too large")
 	}
 	return data, nil
 }

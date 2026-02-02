@@ -72,7 +72,7 @@ func main() {
 
 func BadIP(r blossy.Request, hints blossy.UploadHints) *blossom.Error {
 	if slices.Contains(blacklist, r.IP().Group()) {
-		return &blossom.Error{Code: http.StatusForbidden, Reason: "you shall not pass!"}
+		return blossom.ErrForbidden("you shall not pass!")
 	}
 	return nil
 }
@@ -80,7 +80,7 @@ func BadIP(r blossy.Request, hints blossy.UploadHints) *blossom.Error {
 func IsWord(r blossy.Request, hash blossom.Hash, ext string) *blossom.Error {
 	if ext == "docx" || ext == "doc" {
 		blacklist = append(blacklist, r.IP().Group())
-		return &blossom.Error{Code: http.StatusUnsupportedMediaType, Reason: "We don't like Microsoft"}
+		return blossom.ErrUnsupportedMedia("We don't like Microsoft")
 	}
 	return nil
 }

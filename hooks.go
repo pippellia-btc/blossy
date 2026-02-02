@@ -3,7 +3,6 @@ package blossy
 import (
 	"io"
 	"log/slog"
-	"net/http"
 	"net/url"
 
 	"github.com/pippellia-btc/blossom"
@@ -111,12 +110,12 @@ func NewOnHooks() OnHooks {
 
 func defaultDownload(r Request, hash blossom.Hash, ext string) (BlobDelivery, *blossom.Error) {
 	slog.Info("received GET request", "hash", hash.Hex(), "ext", ext, "ip", r.IP().Group())
-	return nil, &blossom.Error{Code: http.StatusNotFound, Reason: "The Download hook is not configured"}
+	return nil, blossom.ErrNotFound("The Download hook is not configured")
 }
 
 func defaultCheck(r Request, hash blossom.Hash, ext string) (mime string, size int64, err *blossom.Error) {
 	slog.Info("received HEAD request", "hash", hash.Hex(), "ext", ext, "ip", r.IP().Group())
-	return "", 0, &blossom.Error{Code: http.StatusNotFound, Reason: "The Check hook is not configured"}
+	return "", 0, blossom.ErrNotFound("The Check hook is not configured")
 }
 
 // Slice is an internal type used to simplify registration of hooks.
