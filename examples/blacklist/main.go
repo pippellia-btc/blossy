@@ -7,13 +7,17 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"sync"
 
 	"github.com/pippellia-btc/blossom"
 	"github.com/pippellia-btc/blossy"
 )
 
-// the list of banned IPs
-var blacklist []string
+// the list of banned IPs, protected by mu
+var (
+	blacklist []string
+	mu        sync.RWMutex
+)
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
@@ -36,6 +40,9 @@ func main() {
 }
 
 func BadIP(r blossy.Request, hints blossy.UploadHints) *blossom.Error {
+	mu.RLock()
+	defer mu.RUnlock()
+
 	if slices.Contains(blacklist, r.IP().Group()) {
 		return &blossom.Error{Code: http.StatusForbidden, Reason: "you shall not pass!"}
 	}
@@ -46,6 +53,10 @@ func IsWord(r blossy.Request, hash blossom.Hash, ext string) *blossom.Error {
 	if ext == "docx" || ext == "doc" {
 		ip := r.IP().Group()
 		slog.Info("blacklisting", "IP", ip)
+
+		mu.Lock()
+		defer mu.Unlock()
+
 		blacklist = append(blacklist, ip)
 		return &blossom.Error{Code: http.StatusUnsupportedMediaType, Reason: "We don't like Microsoft"}
 	}

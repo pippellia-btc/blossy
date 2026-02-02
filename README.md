@@ -1,6 +1,6 @@
 # Blossy
 
-A framework for building super custom [Blossom](https://github.com/hzrd149/blossom) servers. Written in Go, it's designed to be simple and performant, while providing an exeptional developer exceptional.
+A framework for building super custom [Blossom](https://github.com/hzrd149/blossom) servers. Written in Go, it's designed to be simple and performant, while providing an exceptional developer experience.
 
 <a href="https://pkg.go.dev/github.com/pippellia-btc/blossy"><img src="https://pkg.go.dev/badge/github.com/pippellia-btc/blossy.svg" alt="Go Reference"></a>
 [![Go Report Card](https://goreportcard.com/badge/github.com/pippellia-btc/blossy)](https://goreportcard.com/report/github.com/pippellia-btc/blossy)
