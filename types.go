@@ -19,25 +19,11 @@ type MetaDelivery interface {
 	sealMeta() // unexported method seals the interface
 }
 
-// redirect can be used as both [BlobDelivery] and [MetaDelivery].
-type redirect interface {
-	BlobDelivery
-	MetaDelivery
-}
-
 type servedBlob struct {
 	blossom.Blob
 }
 
 func (servedBlob) sealBlob() {}
-
-type redirectedBlob struct {
-	url  string
-	code int
-}
-
-func (redirectedBlob) sealBlob() {}
-func (redirectedBlob) sealMeta() {}
 
 type foundBlob struct {
 	mime string
@@ -56,6 +42,15 @@ func Found(mime string, size int64) MetaDelivery {
 	return foundBlob{mime: mime, size: size}
 }
 
+// redirect can be used as both [BlobDelivery] and [MetaDelivery].
+type redirect struct {
+	url  string
+	code int
+}
+
+func (redirect) sealBlob() {}
+func (redirect) sealMeta() {}
+
 // Redirect creates a response that redirects the client to the given URL.
 // It can be used as both [BlobDelivery] and [MetaDelivery].
 // Common status codes are http.StatusFound (302) or http.StatusMovedPermanently (301).
@@ -63,7 +58,7 @@ func Redirect(url string, code int) redirect {
 	if code == 0 {
 		code = http.StatusFound
 	}
-	return redirectedBlob{url: url, code: code}
+	return redirect{url: url, code: code}
 }
 
 // UploadHints contains hints about the uploaded blob as reported by the client.

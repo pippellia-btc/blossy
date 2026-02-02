@@ -180,7 +180,7 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-	case redirectedBlob:
+	case redirect:
 		http.Redirect(w, r, result.url, result.code)
 
 	default:
@@ -220,7 +220,7 @@ func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", strconv.FormatInt(result.size, 10))
 		w.WriteHeader(http.StatusOK)
 
-	case redirectedBlob:
+	case redirect:
 		http.Redirect(w, r, result.url, result.code)
 
 	default:
