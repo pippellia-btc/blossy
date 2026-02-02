@@ -216,6 +216,7 @@ func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", mime)
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	w.WriteHeader(http.StatusOK)
 }
 
 // HandleDelete handles the DELETE /<sha256> endpoint.
@@ -293,6 +294,7 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(desc); err != nil {
 		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
+		blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError})
 	}
 }
 
@@ -365,6 +367,7 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(desc); err != nil {
 		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
+		blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError})
 	}
 }
 
@@ -413,6 +416,7 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(desc); err != nil {
 		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
+		blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError})
 	}
 }
 
@@ -477,6 +481,5 @@ func setCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Authorization, *")
 	w.Header().Set("Access-Control-Max-Age", "86400")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers")
 }

@@ -134,7 +134,7 @@ func parseAuth(header http.Header) (*nostr.Event, error) {
 	if err := json.Unmarshal(bytes, event); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidEventJSON, err)
 	}
-	return event, err
+	return event, nil
 }
 
 // firstTag returns the first value of the tag with the provided key, and whether it was present.

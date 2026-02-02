@@ -1,6 +1,6 @@
 # Blossy
 
-A framework for building super custom [Blossom](https://github.com/hzrd149/blossom) servers. Written in Go, it's designed to be simple and performant, while providing an exeptional developer experience.
+A framework for building super custom [Blossom](https://github.com/hzrd149/blossom) servers. Written in Go, it's designed to be simple and performant, while providing an exeptional developer exceptional.
 
 <a href="https://pkg.go.dev/github.com/pippellia-btc/blossy"><img src="https://pkg.go.dev/badge/github.com/pippellia-btc/blossy.svg" alt="Go Reference"></a>
 [![Go Report Card](https://goreportcard.com/badge/github.com/pippellia-btc/blossy)](https://goreportcard.com/report/github.com/pippellia-btc/blossy)
@@ -18,10 +18,11 @@ package main
 
 import (
 	"context"
+	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/pippellia-btc/rely"
+	"github.com/pippellia-btc/blossy"
 )
 
 func main() {
@@ -29,7 +30,7 @@ func main() {
 	defer cancel()
 
 	blossom, err := blossy.NewServer(
-		blossy.WithBaseURL("example.com"),
+		blossy.WithBaseURL("https://example.com"),
 	)
 	if err != nil {
 		panic(err)

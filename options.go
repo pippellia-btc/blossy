@@ -12,9 +12,9 @@ type Option func(*Server)
 // WithBaseURL sets the server base URL, which is be used in [BlobDescriptor],
 // and will be used in validating auth (not yet implemented).
 // If not set, a warning will be logged.
-func WithBaseURL(url string) Option {
+func WithBaseURL(u string) Option {
 	return func(s *Server) {
-		s.Sys.baseURL = url
+		s.Sys.baseURL = u
 	}
 }
 

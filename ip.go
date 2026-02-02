@@ -31,7 +31,7 @@ func (ip IP) Group() string {
 // It panics if prefix is outside the closed interval [0,128].
 func (ip IP) GroupPrefix(prefix int) string {
 	if prefix < 0 || prefix > 128 {
-		panic("rely.IP.GroupPrefix: prefix must be between 0 and 128")
+		panic("blossy.IP.GroupPrefix: prefix must be between 0 and 128")
 	}
 	if len(ip.Raw) == 0 {
 		return ""
