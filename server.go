@@ -140,21 +140,21 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 	req, hash, ext, err := parseFetch(r)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Download {
 		if err = reject(req, hash, ext); err != nil {
-			blossom.WriteError(w, *err)
+			blossom.WriteError(w, err)
 			return
 		}
 	}
 
 	delivery, err := s.On.Download(req, hash, ext)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 
@@ -163,7 +163,7 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 		blob := d.Blob
 		if blob == nil {
 			s.log.Error("handle download: blob is nil")
-			blossom.WriteError(w, blossom.Error{Code: http.StatusNotFound, Reason: "Blob not found"})
+			blossom.WriteError(w, blossom.ErrNotFound("Blob not found"))
 			return
 		}
 		defer blob.Close()
@@ -185,7 +185,7 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		s.log.Error("handle download: unknown blob delivery type", "type", reflect.TypeOf(delivery))
-		blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError, Reason: "Unknown blob delivery type"})
+		blossom.WriteError(w, blossom.ErrInternal("Unknown blob delivery type"))
 	}
 }
 
@@ -193,21 +193,21 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
 	req, hash, ext, err := parseFetch(r)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Check {
 		if err = reject(req, hash, ext); err != nil {
-			blossom.WriteError(w, *err)
+			blossom.WriteError(w, err)
 			return
 		}
 	}
 
 	mime, size, err := s.On.Check(req, hash, ext)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 
@@ -223,27 +223,27 @@ func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	if s.On.Delete == nil {
 		// delete endpoint is optional
-		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Delete hook is not configured"}
+		err := blossom.ErrNotImplemented("The Delete hook is not configured")
 		blossom.WriteError(w, err)
 		return
 	}
 
 	req, hash, err := parseDelete(r)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Delete {
 		if err = reject(req, hash); err != nil {
-			blossom.WriteError(w, *err)
+			blossom.WriteError(w, err)
 			return
 		}
 	}
 
 	if err = s.On.Delete(req, hash); err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -253,14 +253,14 @@ func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	if s.On.Upload == nil {
 		// upload endpoint is optional
-		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Upload hook is not configured"}
+		err := blossom.ErrNotImplemented("The Upload hook is not configured")
 		blossom.WriteError(w, err)
 		return
 	}
 
 	req, hints, body, err := parseUpload(r)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 
@@ -269,14 +269,14 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 
 	for _, reject := range s.Reject.Upload {
 		if err = reject(req, hints); err != nil {
-			blossom.WriteError(w, *err)
+			blossom.WriteError(w, err)
 			return
 		}
 	}
 
 	desc, err := s.On.Upload(req, hints, body)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 
@@ -285,7 +285,7 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 		url, err := s.deriveURL(desc)
 		if err != nil {
 			s.log.Error("handle upload: failed to derive URL", "error", err)
-			blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError, Reason: err.Error()})
+			blossom.WriteError(w, blossom.ErrInternal(err.Error()))
 			return
 		}
 		desc.URL = url
@@ -294,7 +294,7 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(desc); err != nil {
 		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
-		blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError})
+		blossom.WriteError(w, blossom.ErrInternal("failed to encode blob descriptor"))
 	}
 }
 
@@ -302,21 +302,21 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
 	if s.On.Upload == nil {
 		// upload endpoint is optional
-		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Upload hook is not configured"}
+		err := blossom.ErrNotImplemented("The Upload hook is not configured")
 		blossom.WriteError(w, err)
 		return
 	}
 
 	req, hints, err := parseUploadCheck(r)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Upload {
 		if err = reject(req, hints); err != nil {
-			blossom.WriteError(w, *err)
+			blossom.WriteError(w, err)
 			return
 		}
 	}
@@ -327,14 +327,14 @@ func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 	if s.On.Mirror == nil {
 		// mirror endpoint is optional
-		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Mirror hook is not configured"}
+		err := blossom.ErrNotImplemented("The Mirror hook is not configured")
 		blossom.WriteError(w, err)
 		return
 	}
 
 	req, url, err := parseMirror(r)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 
@@ -342,14 +342,14 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 
 	for _, reject := range s.Reject.Mirror {
 		if err = reject(req, url); err != nil {
-			blossom.WriteError(w, *err)
+			blossom.WriteError(w, err)
 			return
 		}
 	}
 
 	desc, err := s.On.Mirror(req, url)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 
@@ -358,7 +358,7 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 		url, err := s.deriveURL(desc)
 		if err != nil {
 			s.log.Error("handle mirror: failed to derive URL", "error", err)
-			blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError, Reason: err.Error()})
+			blossom.WriteError(w, blossom.ErrInternal(err.Error()))
 			return
 		}
 		desc.URL = url
@@ -367,7 +367,7 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(desc); err != nil {
 		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
-		blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError})
+		blossom.WriteError(w, blossom.ErrInternal("failed to encode blob descriptor"))
 	}
 }
 
@@ -375,14 +375,14 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 	if s.On.Media == nil {
 		// media endpoint is optional
-		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Media hook is not configured"}
+		err := blossom.ErrNotImplemented("The Media hook is not configured")
 		blossom.WriteError(w, err)
 		return
 	}
 
 	req, hints, body, err := parseUpload(r)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 
@@ -391,14 +391,14 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 
 	for _, reject := range s.Reject.Media {
 		if err = reject(req, hints); err != nil {
-			blossom.WriteError(w, *err)
+			blossom.WriteError(w, err)
 			return
 		}
 	}
 
 	desc, err := s.On.Media(req, hints, body)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 
@@ -407,7 +407,7 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 		url, err := s.deriveURL(desc)
 		if err != nil {
 			s.log.Error("handle media: failed to derive URL", "error", err)
-			blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError, Reason: err.Error()})
+			blossom.WriteError(w, blossom.ErrInternal(err.Error()))
 			return
 		}
 		desc.URL = url
@@ -416,7 +416,7 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(desc); err != nil {
 		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
-		blossom.WriteError(w, blossom.Error{Code: http.StatusInternalServerError})
+		blossom.WriteError(w, blossom.ErrInternal("failed to encode blob descriptor"))
 	}
 }
 
@@ -424,21 +424,21 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleMediaCheck(w http.ResponseWriter, r *http.Request) {
 	if s.On.Media == nil {
 		// media endpoint is optional
-		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Media hook is not configured"}
+		err := blossom.ErrNotImplemented("The Media hook is not configured")
 		blossom.WriteError(w, err)
 		return
 	}
 
 	req, hints, err := parseUploadCheck(r)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Media {
 		if err = reject(req, hints); err != nil {
-			blossom.WriteError(w, *err)
+			blossom.WriteError(w, err)
 			return
 		}
 	}
@@ -449,27 +449,27 @@ func (s *Server) HandleMediaCheck(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleReport(w http.ResponseWriter, r *http.Request) {
 	if s.On.Report == nil {
 		// report endpoint is optional
-		err := blossom.Error{Code: http.StatusNotImplemented, Reason: "The Report hook is not configured"}
+		err := blossom.ErrNotImplemented("The Report hook is not configured")
 		blossom.WriteError(w, err)
 		return
 	}
 
 	req, report, err := parseReport(r)
 	if err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Report {
 		if err = reject(req, report); err != nil {
-			blossom.WriteError(w, *err)
+			blossom.WriteError(w, err)
 			return
 		}
 	}
 
 	if err = s.On.Report(req, report); err != nil {
-		blossom.WriteError(w, *err)
+		blossom.WriteError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)

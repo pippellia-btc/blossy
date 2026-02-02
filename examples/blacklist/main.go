@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"slices"
@@ -44,7 +43,7 @@ func BadIP(r blossy.Request, hints blossy.UploadHints) *blossom.Error {
 	defer mu.RUnlock()
 
 	if slices.Contains(blacklist, r.IP().Group()) {
-		return &blossom.Error{Code: http.StatusForbidden, Reason: "you shall not pass!"}
+		return blossom.ErrForbidden("you shall not pass!")
 	}
 	return nil
 }
@@ -58,7 +57,7 @@ func IsWord(r blossy.Request, hash blossom.Hash, ext string) *blossom.Error {
 		defer mu.Unlock()
 
 		blacklist = append(blacklist, ip)
-		return &blossom.Error{Code: http.StatusUnsupportedMediaType, Reason: "We don't like Microsoft"}
+		return blossom.ErrUnsupportedMedia("We don't like Microsoft")
 	}
 	return nil
 }

@@ -32,10 +32,10 @@ func main() {
 
 func BlobNotFound(r blossy.Request, hash blossom.Hash, ext string) (blossy.BlobDelivery, *blossom.Error) {
 	slog.Info("received GET request", "hash", hash, "ext", ext, "ip", r.IP().Group())
-	return nil, &blossom.Error{Code: 404, Reason: "Blob not found"}
+	return nil, blossom.ErrNotFound("Blob not found")
 }
 
 func MetaNotFound(r blossy.Request, hash blossom.Hash, ext string) (string, int64, *blossom.Error) {
 	slog.Info("received HEAD request", "hash", hash, "ext", ext, "ip", r.IP().Group())
-	return "", 0, &blossom.Error{Code: 404, Reason: "Blob not found"}
+	return "", 0, blossom.ErrNotFound("Blob not found")
 }
