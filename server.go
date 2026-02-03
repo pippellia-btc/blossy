@@ -57,11 +57,11 @@ func (s *Server) TotalRequests() int {
 
 // deriveURL derives the URL for a blob descriptor.
 // If the server base URL is not set, it returns an error.
-func (s *Server) deriveURL(desc blossom.BlobDescriptor) (string, error) {
+func (s *Server) deriveURL(d blossom.BlobDescriptor) (string, error) {
 	if s.Sys.baseURL == "" {
 		return "", errors.New("server base url is not set")
 	}
-	return s.Sys.baseURL + "/" + desc.Hash.Hex() + blossom.ExtFromType(desc.Type), nil
+	return s.Sys.baseURL + "/" + d.Hash.Hex() + "." + blossom.ExtFromType(d.Type), nil
 }
 
 // StartAndServe starts the blossom server, listens to the provided address and handles http requests.
