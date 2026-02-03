@@ -12,6 +12,10 @@ func TestParseHash(t *testing.T) {
 		ext  string
 	}{
 		{
+			path: "44f875eff24db8e87ee4057e7e5b65e50091680e6497bb8b1fbba223ec998089",
+			hex:  "44f875eff24db8e87ee4057e7e5b65e50091680e6497bb8b1fbba223ec998089",
+		},
+		{
 			path: "/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png",
 			hex:  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			ext:  "png",

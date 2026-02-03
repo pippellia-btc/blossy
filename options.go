@@ -132,19 +132,15 @@ func validateBaseURL(baseURL string) error {
 	if err != nil {
 		return errors.New("invalid base url: " + err.Error())
 	}
-
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return errors.New("base url must have http or https scheme")
 	}
-
 	if u.Host == "" {
 		return errors.New("base url must have a host")
 	}
-
 	if strings.HasSuffix(baseURL, "/") {
 		return errors.New("base url must not have a trailing slash")
 	}
-
 	if u.RawQuery != "" || u.Fragment != "" {
 		return errors.New("base url must not have query parameters or fragments")
 	}
