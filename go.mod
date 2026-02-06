@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/nbd-wtf/go-nostr v0.51.8
 	github.com/pippellia-btc/blisk v0.4.0
-	github.com/pippellia-btc/blossom v0.4.8
+	github.com/pippellia-btc/blossom v0.5.0
 )
 
 require (
