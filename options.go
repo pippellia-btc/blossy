@@ -11,7 +11,7 @@ import (
 type Option func(*Server)
 
 // WithHostname sets the server hostname, which is used to derive blob descriptor URLs
-// and will be used to validate auth (not yet implemented).
+// and to validate authorization events.
 //
 // The hostname must be a valid domain (e.g., "cdn.example.com", "blossom.example.com"),
 // without a scheme, path, or trailing slash. The server always uses https when building URLs.
@@ -46,13 +46,13 @@ func WithRangeSupport() Option {
 }
 
 // WithReadHeaderTimeout sets the maximum duration for reading the headers of an HTTP request.
-// It's used only in the http server used by [Server.StartAndServe]. Must be > 1s.
+// It's used only in the http server used by [Server.StartAndServe]. Must be >= 1s.
 func WithReadHeaderTimeout(d time.Duration) Option {
 	return func(s *Server) { s.settings.HTTP.readHeaderTimeout = d }
 }
 
 // WithIdleTimeout sets the maximum duration an HTTP connection can be idle before being closed.
-// It's used only in the http server used by [Server.StartAndServe]. Must be > 10s.
+// It's used only in the http server used by [Server.StartAndServe]. Must be >= 10s.
 func WithIdleTimeout(d time.Duration) Option {
 	return func(s *Server) { s.settings.HTTP.idleTimeout = d }
 }
@@ -77,7 +77,7 @@ func newSettings() settings {
 
 type systemSettings struct {
 	// hostname is the server hostname, used to derive the URL of a blob descriptor when it was not manually set.
-	// It will also be used in validating auth (not yet implemented, see auth.go).
+	// It is also used in validating authorization events (see auth package).
 	hostname string
 }
 
@@ -102,7 +102,7 @@ func newHTTPSettings() httpSettings {
 func (s *Server) validate() error {
 	// sys
 	if s.settings.Sys.hostname == "" {
-		s.log.Warn("server hostname is not set. This means you will have to manually set the URL of all blob descriptors returned")
+		s.log.Warn("server hostname is not set. This means auth will fail, and you will have to manually set the URL of all blob descriptors returned")
 	} else {
 		if err := utils.ValidateHostname(s.settings.Sys.hostname); err != nil {
 			return err
