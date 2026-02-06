@@ -10,13 +10,13 @@ import (
 // BlobDelivery represents how a blob should be delivered to the client.
 // Use [Serve] to serve a [blossom.Blob] directly to the client or [Redirect] to redirect the client to another URL.
 type BlobDelivery interface {
-	sealBlob() // unexported method seals the interface
+	sealBlob() // seal the interface
 }
 
 // MetaDelivery represents how blob metadata should be delivered to the client.
 // Use [Found] to return the metadata directly, or [Redirect] to redirect the client to another URL.
 type MetaDelivery interface {
-	sealMeta() // unexported method seals the interface
+	sealMeta() // seal the interface
 }
 
 type servedBlob struct {
@@ -25,17 +25,17 @@ type servedBlob struct {
 
 func (servedBlob) sealBlob() {}
 
+// Serve creates a BlobDelivery that serves the blob directly to the client.
+func Serve(blob blossom.Blob) BlobDelivery {
+	return servedBlob{blob}
+}
+
 type foundBlob struct {
 	mime string
 	size int64
 }
 
 func (foundBlob) sealMeta() {}
-
-// Serve creates a BlobDelivery that serves the blob directly to the client.
-func Serve(blob blossom.Blob) BlobDelivery {
-	return servedBlob{blob}
-}
 
 // Found creates a MetaDelivery that returns the blob metadata directly to the client.
 func Found(mime string, size int64) MetaDelivery {
