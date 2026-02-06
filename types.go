@@ -66,8 +66,8 @@ func Redirect(url string, code int) redirect {
 // as they can be easily spoofed.
 type UploadHints struct {
 	// Hash is the sha256 hash of the uploaded blob as reported by the client.
-	// If unknown, it will be the zero value.
-	Hash blossom.Hash
+	// If unknown, it will be nil, and not the zero value (000...000) because that is a valid hash.
+	Hash *blossom.Hash
 
 	// Type is the content type of the uploaded blob.
 	// If unknown, it will be an empty string.

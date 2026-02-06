@@ -43,7 +43,7 @@ type RejectHooks struct {
 	Upload slice[func(r Request, hints UploadHints) *blossom.Error]
 
 	// Mirror is invoked before processing a PUT /mirror request.
-	// The url has been previously validated to be a non-nil and valid blossom URL.
+	// The url has been previously validated to be a non-nil HTTPS URL with a valid blossom hash in its path.
 	Mirror slice[func(r Request, url *url.URL) *blossom.Error]
 
 	// Media is invoked when processing the HEAD /media and before processing every PUT /media request.
@@ -83,7 +83,7 @@ type OnHooks struct {
 	Upload func(r Request, hints UploadHints, data io.Reader) (blossom.BlobDescriptor, *blossom.Error)
 
 	// Mirror handles the core logic for PUT /mirror as per BUD-04.
-	// The url has been previously validated to be a non-nil and valid blossom URL.
+	// The url has been previously validated to be a non-nil HTTPS URL with a valid blossom hash in its path.
 	// If the returned blob descriptor has an empty URL, the server will automatically derive it from the
 	// hostname, the hash and the type of the blob.
 	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).

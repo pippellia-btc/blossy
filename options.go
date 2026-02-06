@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log/slog"
 	"time"
+
+	"github.com/pippellia-btc/blossy/utils"
 )
 
 type Option func(*Server)
@@ -102,7 +104,7 @@ func (s *Server) validate() error {
 	if s.settings.Sys.hostname == "" {
 		s.log.Warn("server hostname is not set. This means you will have to manually set the URL of all blob descriptors returned")
 	} else {
-		if err := validateHostname(s.settings.Sys.hostname); err != nil {
+		if err := utils.ValidateHostname(s.settings.Sys.hostname); err != nil {
 			return err
 		}
 	}

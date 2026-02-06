@@ -1,9 +1,7 @@
 package blossy
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,16 +12,18 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/pippellia-btc/blossom"
+	"github.com/pippellia-btc/blossy/auth"
+	"github.com/pippellia-btc/blossy/utils"
 )
 
 // Request represents metadata about an incoming HTTP request.
 // It provides access to identifying, network, authentication, and
 // contextual information, as well as the underlying raw http.Request.
 type Request interface {
-	// ID is the unique identified of the request, useful for logging or tracking.
+	// ID is the unique identifier of the request, useful for logging or tracking.
 	ID() int64
 
-	// IP address where the request come from.
+	// IP address where the request comes from.
 	// For rate-limiting purposes you should use [IP.Group] or [IP.GroupPrefix]
 	// as a normalized representation of the IP.
 	IP() IP
@@ -56,18 +56,19 @@ func (r request) IsAuthed() bool           { return r.pubkey != "" }
 func (r request) Context() context.Context { return r.raw.Context() }
 func (r request) Raw() *http.Request       { return r.raw }
 
-func parseFetch(r *http.Request) (request, blossom.Hash, string, *blossom.Error) {
-	hash, ext, err := ParseHash(r.URL.Path)
+func (s *Server) parseFetch(r *http.Request) (request, blossom.Hash, string, *blossom.Error) {
+	hash, ext, err := utils.ParseHashExt(r.URL.Path)
 	if err != nil {
 		return request{}, blossom.Hash{}, "", blossom.ErrBadRequest(err.Error())
 	}
 
-	pubkey, err := parsePubkey(r.Header, VerbGet, hash)
-	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
+	pubkey, err := auth.Authenticate(r, s.Sys.hostname, &hash)
+	if err != nil {
 		return request{}, blossom.Hash{}, "", blossom.ErrUnauthorized(err.Error())
 	}
 
 	req := request{
+		id:     s.nextRequest.Add(1),
 		ip:     GetIP(r),
 		pubkey: pubkey,
 		raw:    r,
@@ -75,18 +76,19 @@ func parseFetch(r *http.Request) (request, blossom.Hash, string, *blossom.Error)
 	return req, hash, ext, nil
 }
 
-func parseDelete(r *http.Request) (request, blossom.Hash, *blossom.Error) {
-	hash, _, err := ParseHash(r.URL.Path)
+func (s *Server) parseDelete(r *http.Request) (request, blossom.Hash, *blossom.Error) {
+	hash, _, err := utils.ParseHashExt(r.URL.Path)
 	if err != nil {
 		return request{}, blossom.Hash{}, blossom.ErrBadRequest(err.Error())
 	}
 
-	pubkey, err := parsePubkey(r.Header, VerbDelete, hash)
-	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
+	pubkey, err := auth.Authenticate(r, s.Sys.hostname, &hash)
+	if err != nil {
 		return request{}, blossom.Hash{}, blossom.ErrUnauthorized(err.Error())
 	}
 
 	req := request{
+		id:     s.nextRequest.Add(1),
 		ip:     GetIP(r),
 		pubkey: pubkey,
 		raw:    r,
@@ -94,25 +96,21 @@ func parseDelete(r *http.Request) (request, blossom.Hash, *blossom.Error) {
 	return req, hash, nil
 }
 
-func parseUpload(r *http.Request) (request, UploadHints, io.ReadCloser, *blossom.Error) {
-	// In the future I want to pass the hash of the body.
-	// Now there is no point since the auth scheme is broken anyway.
-	// See https://github.com/hzrd149/blossom/pull/87
-	pubkey, err := parsePubkey(r.Header, VerbUpload, blossom.Hash{})
-	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
-		return request{}, UploadHints{}, nil, blossom.ErrUnauthorized(err.Error())
-	}
-
+func (s *Server) parseUpload(r *http.Request) (request, UploadHints, io.ReadCloser, *blossom.Error) {
 	hints := UploadHints{
 		Type: r.Header.Get("Content-Type"),
-		Size: -1, // default to unknown
+		Size: -1, // stands for unknown
 	}
 
 	if cl := r.Header.Get("Content-Length"); cl != "" {
 		size, err := strconv.ParseInt(cl, 10, 64)
-		if err == nil {
-			hints.Size = size
+		if err != nil {
+			return request{}, UploadHints{}, nil, blossom.ErrBadRequest("'Content-Length' header is invalid: " + err.Error())
 		}
+		if size <= 0 {
+			return request{}, UploadHints{}, nil, blossom.ErrBadRequest("'Content-Length' header is invalid: size must be greater than 0")
+		}
+		hints.Size = size
 	}
 
 	if sha := r.Header.Get("Content-Digest"); sha != "" {
@@ -120,10 +118,19 @@ func parseUpload(r *http.Request) (request, UploadHints, io.ReadCloser, *blossom
 		if err != nil {
 			return request{}, UploadHints{}, nil, blossom.ErrBadRequest("'Content-Digest' header is invalid: " + err.Error())
 		}
-		hints.Hash = hash
+		hints.Hash = &hash
+	}
+
+	pubkey, err := auth.Authenticate(r, s.Sys.hostname, hints.Hash)
+	if errors.Is(err, auth.ErrMissingHash) {
+		return request{}, UploadHints{}, nil, blossom.ErrBadRequest("'Content-Digest' header is missing or empty")
+	}
+	if err != nil {
+		return request{}, UploadHints{}, nil, blossom.ErrUnauthorized(err.Error())
 	}
 
 	req := request{
+		id:     s.nextRequest.Add(1),
 		ip:     GetIP(r),
 		pubkey: pubkey,
 		raw:    r,
@@ -131,14 +138,10 @@ func parseUpload(r *http.Request) (request, UploadHints, io.ReadCloser, *blossom
 	return req, hints, r.Body, nil
 }
 
-func parseUploadCheck(r *http.Request) (request, UploadHints, *blossom.Error) {
-	sha256 := r.Header.Get("X-SHA-256")
-	if sha256 == "" {
-		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-SHA-256' header is missing or empty")
-	}
-	hash, err := blossom.ParseHash(sha256)
-	if err != nil {
-		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-SHA-256' header is invalid: " + err.Error())
+func (s *Server) parseUploadCheck(r *http.Request) (request, UploadHints, *blossom.Error) {
+	ct := r.Header.Get("X-Content-Type")
+	if ct == "" {
+		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-Content-Type' header is missing or empty")
 	}
 
 	cl := r.Header.Get("X-Content-Length")
@@ -149,44 +152,50 @@ func parseUploadCheck(r *http.Request) (request, UploadHints, *blossom.Error) {
 	if err != nil {
 		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-Content-Length' header is invalid: " + err.Error())
 	}
-
-	mime := r.Header.Get("X-Content-Type")
-	if mime == "" {
-		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-Content-Type' header is missing or empty")
+	if size <= 0 {
+		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-Content-Length' header is invalid: size must be greater than 0")
 	}
 
-	pubkey, err := parsePubkey(r.Header, VerbUpload, hash)
-	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
+	sha256 := r.Header.Get("X-SHA-256")
+	if sha256 == "" {
+		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-SHA-256' header is missing or empty")
+	}
+	hash, err := blossom.ParseHash(sha256)
+	if err != nil {
+		return request{}, UploadHints{}, blossom.ErrBadRequest("'X-SHA-256' header is invalid: " + err.Error())
+	}
+
+	hints := UploadHints{
+		Hash: &hash,
+		Type: ct,
+		Size: size,
+	}
+
+	pubkey, err := auth.Authenticate(r, s.Sys.hostname, hints.Hash)
+	if err != nil {
 		return request{}, UploadHints{}, blossom.ErrUnauthorized(err.Error())
 	}
 
 	req := request{
+		id:     s.nextRequest.Add(1),
 		ip:     GetIP(r),
 		pubkey: pubkey,
 		raw:    r,
 	}
-	hints := UploadHints{
-		Hash: hash,
-		Type: mime,
-		Size: size,
-	}
 	return req, hints, nil
 }
 
-func parseMirror(r *http.Request) (request, *url.URL, *blossom.Error) {
-	data, rerr := ReadNoMore(r.Body, 512)
+func (s *Server) parseMirror(r *http.Request) (request, *url.URL, *blossom.Error) {
+	body, rerr := utils.ReadNoMore(r.Body, 512)
 	if rerr != nil {
 		return request{}, nil, rerr
 	}
-
-	dec := json.NewDecoder(bytes.NewReader(data))
-	hash := sha256.Sum256(data)
 
 	var payload struct {
 		URL string `json:"url"`
 	}
 
-	if err := dec.Decode(&payload); err != nil {
+	if err := json.Unmarshal(body, &payload); err != nil {
 		return request{}, nil, blossom.ErrBadRequest("failed to parse JSON body: " + err.Error())
 	}
 
@@ -194,17 +203,22 @@ func parseMirror(r *http.Request) (request, *url.URL, *blossom.Error) {
 	if err != nil {
 		return request{}, nil, blossom.ErrBadRequest("failed to parse URL: " + err.Error())
 	}
+	if url.Host == "" || url.Scheme != "https" {
+		return request{}, nil, blossom.ErrBadRequest("URL is invalid: must be a valid HTTPS URL")
+	}
 
-	if err := ValidateBlossomURL(url); err != nil {
+	hash, _, err := utils.ParseHashExt(url.Path)
+	if err != nil {
 		return request{}, nil, blossom.ErrBadRequest("invalid blossom URL: " + err.Error())
 	}
 
-	pubkey, err := parsePubkey(r.Header, VerbUpload, hash)
-	if err != nil && !errors.Is(err, ErrAuthMissingHeader) {
+	pubkey, err := auth.Authenticate(r, s.Sys.hostname, &hash)
+	if err != nil {
 		return request{}, nil, blossom.ErrUnauthorized(err.Error())
 	}
 
 	req := request{
+		id:     s.nextRequest.Add(1),
 		ip:     GetIP(r),
 		pubkey: pubkey,
 		raw:    r,
@@ -212,16 +226,14 @@ func parseMirror(r *http.Request) (request, *url.URL, *blossom.Error) {
 	return req, url, nil
 }
 
-func parseReport(r *http.Request) (request, Report, *blossom.Error) {
-	data, rerr := ReadNoMore(r.Body, 100_000) // ~100 KB
+func (s *Server) parseReport(r *http.Request) (request, Report, *blossom.Error) {
+	body, rerr := utils.ReadNoMore(r.Body, 100_000) // ~100 KB
 	if rerr != nil {
 		return request{}, Report{}, rerr
 	}
 
 	event := &nostr.Event{}
-	dec := json.NewDecoder(bytes.NewReader(data))
-
-	if err := dec.Decode(&event); err != nil {
+	if err := json.Unmarshal(body, event); err != nil {
 		return request{}, Report{}, blossom.ErrBadRequest("failed to parse JSON body: " + err.Error())
 	}
 
@@ -231,6 +243,7 @@ func parseReport(r *http.Request) (request, Report, *blossom.Error) {
 	}
 
 	req := request{
+		id:  s.nextRequest.Add(1),
 		ip:  GetIP(r),
 		raw: r,
 	}
@@ -259,13 +272,23 @@ func parseReportEvent(event *nostr.Event) (Report, error) {
 			return Report{}, fmt.Errorf("invalid \"x\" tag in report event: %w", err)
 		}
 
-		report.Blobs = append(report.Blobs,
-			ReportedBlob{Hash: hash, Reason: tag[2]},
-		)
+		report.Blobs = append(report.Blobs, ReportedBlob{Hash: hash, Reason: tag[2]})
 	}
 
-	if err := verify(event); err != nil {
+	if len(report.Blobs) == 0 {
+		return Report{}, errors.New("invalid report event: no blobs reported")
+	}
+
+	if !event.CheckID() {
+		return Report{}, errors.New("invalid report event: event ID is not valid")
+	}
+	match, err := event.CheckSignature()
+	if err != nil {
 		return Report{}, fmt.Errorf("invalid report event: %w", err)
 	}
+	if !match {
+		return Report{}, errors.New("invalid report event: event signature is not valid")
+	}
+
 	return report, nil
 }

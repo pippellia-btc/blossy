@@ -144,12 +144,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // HandleDownload handles the GET /<sha256>.<ext> endpoint.
 func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
-	req, hash, ext, err := parseFetch(r)
+	req, hash, ext, err := s.parseFetch(r)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
-	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Download {
 		if err = reject(req, hash, ext); err != nil {
@@ -182,7 +181,7 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err != nil {
-			s.log.Error("failure in GET /<sha256>", "error", err)
+			s.log.Error("failure in GET /<sha256>", "error", err, "hash", hash)
 			return
 		}
 
@@ -197,12 +196,11 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 
 // HandleCheck handles the HEAD /<sha256>.<ext> endpoint.
 func (s *Server) HandleCheck(w http.ResponseWriter, r *http.Request) {
-	req, hash, ext, err := parseFetch(r)
+	req, hash, ext, err := s.parseFetch(r)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
-	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Check {
 		if err = reject(req, hash, ext); err != nil {
@@ -244,12 +242,11 @@ func (s *Server) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, hash, err := parseDelete(r)
+	req, hash, err := s.parseDelete(r)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
-	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Delete {
 		if err = reject(req, hash); err != nil {
@@ -274,13 +271,11 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, hints, body, err := parseUpload(r)
+	req, hints, body, err := s.parseUpload(r)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
-
-	req.id = s.nextRequest.Add(1)
 	defer body.Close()
 
 	for _, reject := range s.Reject.Upload {
@@ -310,7 +305,6 @@ func (s *Server) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(desc); err != nil {
 		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
-		blossom.WriteError(w, blossom.ErrInternal("failed to encode blob descriptor"))
 	}
 }
 
@@ -323,12 +317,11 @@ func (s *Server) HandleUploadCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, hints, err := parseUploadCheck(r)
+	req, hints, err := s.parseUploadCheck(r)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
-	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Upload {
 		if err = reject(req, hints); err != nil {
@@ -348,13 +341,11 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, url, err := parseMirror(r)
+	req, url, err := s.parseMirror(r)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
-
-	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Mirror {
 		if err = reject(req, url); err != nil {
@@ -383,7 +374,6 @@ func (s *Server) HandleMirror(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(desc); err != nil {
 		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
-		blossom.WriteError(w, blossom.ErrInternal("failed to encode blob descriptor"))
 	}
 }
 
@@ -396,13 +386,11 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, hints, body, err := parseUpload(r)
+	req, hints, body, err := s.parseUpload(r)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
-
-	req.id = s.nextRequest.Add(1)
 	defer body.Close()
 
 	for _, reject := range s.Reject.Media {
@@ -432,7 +420,6 @@ func (s *Server) HandleMedia(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(desc); err != nil {
 		s.log.Error("failed to encode blob descriptor", "error", err, "hash", desc.Hash)
-		blossom.WriteError(w, blossom.ErrInternal("failed to encode blob descriptor"))
 	}
 }
 
@@ -445,12 +432,11 @@ func (s *Server) HandleMediaCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, hints, err := parseUploadCheck(r)
+	req, hints, err := s.parseUploadCheck(r)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
-	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Media {
 		if err = reject(req, hints); err != nil {
@@ -470,12 +456,11 @@ func (s *Server) HandleReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, report, err := parseReport(r)
+	req, report, err := s.parseReport(r)
 	if err != nil {
 		blossom.WriteError(w, err)
 		return
 	}
-	req.id = s.nextRequest.Add(1)
 
 	for _, reject := range s.Reject.Report {
 		if err = reject(req, report); err != nil {
