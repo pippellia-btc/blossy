@@ -94,6 +94,7 @@ func (s *Server) StartAndServe(ctx context.Context, address string) error {
 		defer cancel()
 
 		s.log.Info("shutting down the blossom server", "address", address)
+		defer s.log.Info("blossom server stopped")
 		return server.Shutdown(ctx)
 
 	case err := <-exitErr:
