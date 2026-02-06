@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"reflect"
@@ -24,13 +25,13 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance with sane defaults and customizable internal behavior.
-// Customize its structure with functional options (e.g., [WithBaseURL], [WithReadHeaderTimeout]).
+// Customize its structure with functional options (e.g., [WithHostname], [WithReadHeaderTimeout]).
 // Customize its behaviour by defining On.Download, On.Upload and other [Hooks].
 //
 // Example:
 //
 //	blossom := NewServer(
-//	    WithBaseURL("https://example.com"),
+//	    WithHostname("cdn.example.com"),
 //	    WithReadHeaderTimeout(5 * time.Second),
 //	)
 func NewServer(opts ...Option) (*Server, error) {
@@ -56,12 +57,16 @@ func (s *Server) TotalRequests() int {
 }
 
 // deriveURL derives the URL for a blob descriptor.
-// If the server base URL is not set, it returns an error.
+// If the server hostname is not set, it returns an error.
 func (s *Server) deriveURL(d blossom.BlobDescriptor) (string, error) {
-	if s.Sys.baseURL == "" {
-		return "", errors.New("server base url is not set")
+	if s.Sys.hostname == "" {
+		return "", errors.New("server hostname is not set")
 	}
-	return s.Sys.baseURL + "/" + d.Hash.Hex() + "." + blossom.ExtFromType(d.Type), nil
+	return fmt.Sprintf("https://%s/%s.%s",
+		s.Sys.hostname,
+		d.Hash.Hex(),
+		blossom.ExtFromType(d.Type),
+	), nil
 }
 
 // StartAndServe starts the blossom server, listens to the provided address and handles http requests.

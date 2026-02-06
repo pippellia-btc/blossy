@@ -3,28 +3,21 @@ package blossy
 import (
 	"errors"
 	"log/slog"
-	"net/url"
-	"strings"
 	"time"
 )
 
 type Option func(*Server)
 
-// WithBaseURL sets the server base URL, which is used in [BlobDescriptor],
-// and will be used in validating auth (not yet implemented).
+// WithHostname sets the server hostname, which is used to derive blob descriptor URLs
+// and will be used to validate auth (not yet implemented).
 //
-// The URL must:
-//   - Have an http or https scheme
-//   - Have a valid host
-//   - Not have a trailing slash
-//   - Not have query parameters or fragments
-//
-// Example: "https://example.com" or "https://cdn.example.com/blossom"
+// The hostname must be a valid domain (e.g., "cdn.example.com", "blossom.example.com"),
+// without a scheme, path, or trailing slash. The server always uses https when building URLs.
 //
 // If not set, a warning will be logged.
-func WithBaseURL(u string) Option {
+func WithHostname(hostname string) Option {
 	return func(s *Server) {
-		s.Sys.baseURL = u
+		s.Sys.hostname = hostname
 	}
 }
 
@@ -81,9 +74,9 @@ func newSettings() settings {
 }
 
 type systemSettings struct {
-	// BaseURL is the server base URL, used to derive the URL of a blob descriptor when it was not manually set.
+	// hostname is the server hostname, used to derive the URL of a blob descriptor when it was not manually set.
 	// It will also be used in validating auth (not yet implemented, see auth.go).
-	baseURL string
+	hostname string
 }
 
 type httpSettings struct {
@@ -106,10 +99,10 @@ func newHTTPSettings() httpSettings {
 
 func (s *Server) validate() error {
 	// sys
-	if s.settings.Sys.baseURL == "" {
-		s.log.Warn("server base url is not set. This means you will have to manually set the URL of all blob descriptors returned")
+	if s.settings.Sys.hostname == "" {
+		s.log.Warn("server hostname is not set. This means you will have to manually set the URL of all blob descriptors returned")
 	} else {
-		if err := validateBaseURL(s.settings.Sys.baseURL); err != nil {
+		if err := validateHostname(s.settings.Sys.hostname); err != nil {
 			return err
 		}
 	}
@@ -123,26 +116,6 @@ func (s *Server) validate() error {
 	}
 	if s.settings.HTTP.shutdownTimeout < 1*time.Second {
 		return errors.New("http shutdown timeout should be greater than 1s to avoid abrupt disconnections")
-	}
-	return nil
-}
-
-func validateBaseURL(baseURL string) error {
-	u, err := url.Parse(baseURL)
-	if err != nil {
-		return errors.New("invalid base url: " + err.Error())
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return errors.New("base url must have http or https scheme")
-	}
-	if u.Host == "" {
-		return errors.New("base url must have a host")
-	}
-	if strings.HasSuffix(baseURL, "/") {
-		return errors.New("base url must not have a trailing slash")
-	}
-	if u.RawQuery != "" || u.Fragment != "" {
-		return errors.New("base url must not have query parameters or fragments")
 	}
 	return nil
 }

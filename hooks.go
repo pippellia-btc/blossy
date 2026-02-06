@@ -77,7 +77,7 @@ type OnHooks struct {
 
 	// Upload handles the core logic for PUT /upload as per BUD-02.
 	// If the returned blob descriptor has an empty URL, the server will automatically derive it from the
-	// baseURL, the hash and the type of the blob.
+	// hostname, the hash and the type of the blob.
 	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/02.md
 	Upload func(r Request, hints UploadHints, data io.Reader) (blossom.BlobDescriptor, *blossom.Error)
@@ -85,14 +85,14 @@ type OnHooks struct {
 	// Mirror handles the core logic for PUT /mirror as per BUD-04.
 	// The url has been previously validated to be a non-nil and valid blossom URL.
 	// If the returned blob descriptor has an empty URL, the server will automatically derive it from the
-	// baseURL, the hash and the type of the blob.
+	// hostname, the hash and the type of the blob.
 	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/04.md
 	Mirror func(r Request, url *url.URL) (blossom.BlobDescriptor, *blossom.Error)
 
 	// Media handles the core logic for PUT /media as per BUD-05.
 	// If the returned blob descriptor has an empty URL, the server will automatically derive it from the
-	// baseURL, the hash and the type of the blob.
+	// hostname, the hash and the type of the blob.
 	// This hook is optional. If not specified, the endpoint will return the http status code 501 (Not Implemented).
 	// Learn more here: https://github.com/hzrd149/blossom/blob/master/buds/05.md
 	Media func(r Request, hints UploadHints, data io.Reader) (blossom.BlobDescriptor, *blossom.Error)

@@ -30,7 +30,7 @@ func main() {
 	defer cancel()
 
 	blossom, err := blossy.NewServer(
-		blossy.WithBaseURL("https://example.com"),
+		blossy.WithHostname("example.com"),
 	)
 	if err != nil {
 		panic(err)
@@ -48,7 +48,7 @@ Fine-tune core parameters using functional options:
 
 ```golang
 blossom := blossy.NewServer(
-	blossy.WithBaseURL("https://myDomain.com"),		// for blob descriptors and auth
+	blossy.WithHostname("myDomain.com"),			// for blob descriptors and auth
 	blossy.WithLogger(myLogger),					// configure the server logger
 	blossy.WithRangeSupport()						// enables support for HTTP range requests
 )
