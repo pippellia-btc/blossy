@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/pippellia-btc/blossom"
@@ -236,43 +235,6 @@ func parseReport(r *http.Request) (request, Report, *blossom.Error) {
 		raw: r,
 	}
 	return req, report, nil
-}
-
-// ParseHash extracts the SHA256 hash and the optional extension from URL path.
-func ParseHash(path string) (hash blossom.Hash, ext string, err error) {
-	path = strings.TrimPrefix(path, "/")
-	parts := strings.SplitN(path, ".", 2) // separate hash from extension
-
-	hash, err = blossom.ParseHash(parts[0])
-	if err != nil {
-		return blossom.Hash{}, "", err
-	}
-
-	if len(parts) > 1 {
-		ext = parts[1]
-	}
-	return hash, ext, nil
-}
-
-// ValidateBlossomURL checks whether the provided URL contains a valid blossom hash in its path.
-func ValidateBlossomURL(url *url.URL) error {
-	path := strings.TrimPrefix(url.Path, "/")
-	parts := strings.SplitN(path, ".", 2) // separate hash from extension
-	_, err := blossom.ParseHash(parts[0])
-	return err
-}
-
-// ReadNoMore reads no more than `limit` bytes from the reader.
-// It returns an error if the reader has more bytes than `limit` to be read.
-func ReadNoMore(r io.Reader, limit int) ([]byte, *blossom.Error) {
-	data, err := io.ReadAll(io.LimitReader(r, int64(limit)))
-	if err != nil {
-		return nil, blossom.ErrBadRequest("failed to read body: " + err.Error())
-	}
-	if len(data) >= limit {
-		return nil, blossom.ErrTooLarge("body too large")
-	}
-	return data, nil
 }
 
 // ParseReportEvent parses a [Report] from the underlying nostr event.
