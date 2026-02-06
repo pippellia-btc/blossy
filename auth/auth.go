@@ -29,16 +29,20 @@ var (
 	ErrInvalidScheme = errors.New("authorization scheme must be 'Nostr <base64_event>'")
 	ErrInvalidBase64 = errors.New("failed to decode base64 event payload")
 	ErrInvalidJSON   = errors.New("invalid event json")
+	ErrMissingHash   = errors.New("auth event has 'x' tags but no hash was provided to match against")
 )
 
 // Authenticate validates the authorization event against the provided hostname and hash,
 // and returns the pubkey of the signed event if valid.
 // If the "Authorization" header is missing, it returns an empty pubkey.
 // If the "Authorization" header is present but the event is invalid, it returns an error.
-func Authenticate(r *http.Request, hostname string, hash blossom.Hash) (pubkey string, err error) {
+//
+// It accepts a nil hash to distinguish between the zero hash and no hash.
+// The distinction is important because a GET might require the hash 000...000,
+// while an upload might not have a hash at all in the Content-Digest header.
+func Authenticate(r *http.Request, hostname string, hash *blossom.Hash) (pubkey string, err error) {
 	event, err := ExtractEvent(r)
 	if errors.Is(err, ErrMissingHeader) {
-		// no authentication is allowed, return an empty pubkey.
 		return "", nil
 	}
 	if err != nil {
@@ -46,36 +50,36 @@ func Authenticate(r *http.Request, hostname string, hash blossom.Hash) (pubkey s
 	}
 
 	if !event.CheckID() {
-		return "", errors.New("invalid event ID")
+		return "", errors.New("auth failed: invalid event ID")
 	}
 	match, err := event.CheckSignature()
 	if err != nil {
-		return "", fmt.Errorf("invalid event signature: %w", err)
+		return "", fmt.Errorf("auth failed: invalid event signature: %w", err)
 	}
 	if !match {
-		return "", errors.New("invalid event signature")
+		return "", errors.New("auth failed: invalid event signature")
 	}
 
 	action, err := impliedAction(r)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("auth failed: %w", err)
 	}
 
 	switch event.Kind {
 	case KindBlossomAuth:
 		auth, err := ParseBlossomAuth(event)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("auth failed: %w", err)
 		}
 		if err := auth.Validate(action, hash, hostname); err != nil {
-			return "", err
+			return "", fmt.Errorf("auth failed: %w", err)
 		}
 		return auth.Pubkey, nil
 
 	// TODO: Add NWT support
 
 	default:
-		return "", fmt.Errorf("unsupported event kind: %d", event.Kind)
+		return "", fmt.Errorf("auth failed: unsupported event kind: %d", event.Kind)
 	}
 }
 

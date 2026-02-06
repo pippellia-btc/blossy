@@ -29,7 +29,8 @@ type BlossomAuth struct {
 
 // Validate validates the Blossom authorization event time bounds and
 // against the expected action, hash and server hostname.
-func (a *BlossomAuth) Validate(action Action, hash blossom.Hash, hostname string) error {
+// A nil hash means no hash was provided to match against (e.g. upload without Content-Digest).
+func (a *BlossomAuth) Validate(action Action, hash *blossom.Hash, hostname string) error {
 	now := time.Now()
 	min := now.Add(-DefaultClockSkew)
 	max := now.Add(DefaultClockSkew)
@@ -46,13 +47,17 @@ func (a *BlossomAuth) Validate(action Action, hash blossom.Hash, hostname string
 
 	if len(a.Hashes) > 0 {
 		// no x tags means the event is considered valid for all blobs.
-		if !slices.Contains(a.Hashes, hash) {
-			return fmt.Errorf("expected hash %s, got %s", hash, a.Hashes)
+		// If there are x tags, the hash must be provided to match against.
+		if hash == nil {
+			return ErrMissingHash
+		}
+		if !slices.Contains(a.Hashes, *hash) {
+			return fmt.Errorf("expected hash %s, got %s", *hash, a.Hashes)
 		}
 	}
 
+	// no server tags means the event is considered valid for all servers
 	if len(a.Hostnames) > 0 {
-		// no server tags means the event is considered valid for all servers.
 		if !slices.Contains(a.Hostnames, hostname) {
 			return fmt.Errorf("expected server hostname %s, got %s", hostname, a.Hostnames)
 		}

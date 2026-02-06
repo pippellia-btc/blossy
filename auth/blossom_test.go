@@ -245,12 +245,13 @@ func TestParseBlossomAuth_Fields(t *testing.T) {
 
 func TestBlossomAuth_Validate(t *testing.T) {
 	otherHash, _ := blossom.ParseHash("1111111111111111111111111111111111111111111111111111111111111111")
+	zeroHash := blossom.Hash{}
 
 	tests := []struct {
 		name     string
 		auth     BlossomAuth
 		action   Action
-		hash     blossom.Hash
+		hash     *blossom.Hash
 		hostname string
 		isValid  bool
 	}{
@@ -264,7 +265,7 @@ func TestBlossomAuth_Validate(t *testing.T) {
 				Hostnames:  []string{"cdn.example.com"},
 			},
 			action:   ActionUpload,
-			hash:     testHash,
+			hash:     &testHash,
 			hostname: "cdn.example.com",
 			isValid:  true,
 		},
@@ -276,7 +277,7 @@ func TestBlossomAuth_Validate(t *testing.T) {
 				Action:     ActionGet,
 			},
 			action:  ActionGet,
-			hash:    testHash,
+			hash:    &testHash,
 			isValid: true,
 		},
 		{
@@ -288,7 +289,7 @@ func TestBlossomAuth_Validate(t *testing.T) {
 				Hashes:     []blossom.Hash{testHash},
 			},
 			action:   ActionDelete,
-			hash:     testHash,
+			hash:     &testHash,
 			hostname: "cdn.example.com",
 			isValid:  true,
 		},
@@ -331,7 +332,7 @@ func TestBlossomAuth_Validate(t *testing.T) {
 				Hashes:     []blossom.Hash{otherHash},
 			},
 			action:  ActionUpload,
-			hash:    testHash,
+			hash:    &testHash,
 			isValid: false,
 		},
 		{
@@ -345,6 +346,41 @@ func TestBlossomAuth_Validate(t *testing.T) {
 			action:   ActionUpload,
 			hostname: "cdn.example.com",
 			isValid:  false,
+		},
+		{
+			name: "nil hash with x tags",
+			auth: BlossomAuth{
+				CreatedAt:  time.Now(),
+				Expiration: time.Now().Add(5 * time.Minute),
+				Action:     ActionUpload,
+				Hashes:     []blossom.Hash{testHash},
+			},
+			action:  ActionUpload,
+			hash:    nil,
+			isValid: false,
+		},
+		{
+			name: "nil hash without x tags",
+			auth: BlossomAuth{
+				CreatedAt:  time.Now(),
+				Expiration: time.Now().Add(5 * time.Minute),
+				Action:     ActionUpload,
+			},
+			action:  ActionUpload,
+			hash:    nil,
+			isValid: true,
+		},
+		{
+			name: "zero hash with matching x tag",
+			auth: BlossomAuth{
+				CreatedAt:  time.Now(),
+				Expiration: time.Now().Add(5 * time.Minute),
+				Action:     ActionGet,
+				Hashes:     []blossom.Hash{zeroHash},
+			},
+			action:  ActionGet,
+			hash:    &zeroHash,
+			isValid: true,
 		},
 	}
 
