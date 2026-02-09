@@ -7,6 +7,23 @@ import (
 	"github.com/pippellia-btc/blossom"
 )
 
+// UploadHints contains hints about the uploaded blob as reported by the client.
+// They can be used for rejection or optimization purposes, but they must not be trusted
+// as they can be easily spoofed.
+type UploadHints struct {
+	// Hash is the sha256 hash of the uploaded blob as reported by the client.
+	// If unknown, it will be nil, and not the zero value (000...000) because that is a valid hash.
+	Hash *blossom.Hash
+
+	// Type is the content type of the uploaded blob.
+	// If unknown, it will be an empty string.
+	Type string
+
+	// Size is the size in bytes of the uploaded blob.
+	// If unknown, it will be -1.
+	Size int64
+}
+
 // BlobDelivery represents how a blob should be delivered to the client.
 // Use [Serve] to serve a [blossom.Blob] directly to the client or [Redirect] to redirect the client to another URL.
 type BlobDelivery interface {
@@ -59,23 +76,6 @@ func Redirect(url string, code int) redirect {
 		code = http.StatusFound
 	}
 	return redirect{url: url, code: code}
-}
-
-// UploadHints contains hints about the uploaded blob as reported by the client.
-// They can be used for rejection or optimization purposes, but they must not be trusted
-// as they can be easily spoofed.
-type UploadHints struct {
-	// Hash is the sha256 hash of the uploaded blob as reported by the client.
-	// If unknown, it will be nil, and not the zero value (000...000) because that is a valid hash.
-	Hash *blossom.Hash
-
-	// Type is the content type of the uploaded blob.
-	// If unknown, it will be an empty string.
-	Type string
-
-	// Size is the size in bytes of the uploaded blob.
-	// If unknown, it will be -1.
-	Size int64
 }
 
 // ReportedBlob represents a blob that was reported for the provided reason.

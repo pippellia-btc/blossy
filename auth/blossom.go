@@ -56,8 +56,8 @@ func (a *BlossomAuth) Validate(action Action, hash *blossom.Hash, hostname strin
 		}
 	}
 
-	// no server tags means the event is considered valid for all servers
 	if len(a.Hostnames) > 0 {
+		// no server tags means the event is considered valid for all servers
 		if !slices.Contains(a.Hostnames, hostname) {
 			return fmt.Errorf("expected server hostname %s, got %s", hostname, a.Hostnames)
 		}
