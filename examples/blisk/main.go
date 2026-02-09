@@ -28,6 +28,7 @@ func main() {
 
 	blossom, err := blossy.NewServer(
 		blossy.WithHostname("example.com"),
+		blossy.WithRangeSupport(),
 	)
 	if err != nil {
 		panic(err)
