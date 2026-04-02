@@ -113,17 +113,17 @@ func (s *Server) parseUpload(r *http.Request) (request, UploadHints, io.ReadClos
 		hints.Size = size
 	}
 
-	if sha := r.Header.Get("Content-Digest"); sha != "" {
+	if sha := r.Header.Get("X-SHA-256"); sha != "" {
 		hash, err := blossom.ParseHash(sha)
 		if err != nil {
-			return request{}, UploadHints{}, nil, blossom.ErrBadRequest("'Content-Digest' header is invalid: " + err.Error())
+			return request{}, UploadHints{}, nil, blossom.ErrBadRequest("'X-SHA-256' header is invalid: " + err.Error())
 		}
 		hints.Hash = &hash
 	}
 
 	pubkey, err := auth.Authenticate(r, s.Sys.hostname, hints.Hash)
 	if errors.Is(err, auth.ErrMissingHash) {
-		return request{}, UploadHints{}, nil, blossom.ErrBadRequest("'Content-Digest' header is missing or empty")
+		return request{}, UploadHints{}, nil, blossom.ErrBadRequest("'X-SHA-256' header is missing or empty")
 	}
 	if err != nil {
 		return request{}, UploadHints{}, nil, blossom.ErrUnauthorized(err.Error())
