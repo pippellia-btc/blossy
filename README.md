@@ -91,9 +91,3 @@ func IsWord(r blossy.Request, hash blossom.Hash, ext string) *blossom.Error {
 Blossy doesn't come with a default database, you have to provide your own.  
 Fortunately, the community has developed several ready-to-use database implementations:  
 - [blisk](https://github.com/pippellia-btc/blisk): a local database for storing blossom blobs on disk. It is designed for efficient, scalable, and deduplicated blob storage while maintaining metadata in sqlite. It's short for Blobs on Disk.
-
-## Security
-
-The authorization spec used by the Blossom protocol at the time of writing is not secure against replay attacks. Therefore, the implementation that blossy uses, by adhering to the protocol, is to be considered not secure.
-
-Hopefully, the protocol will adopt more secure specs like [Nostr Web Tokens](https://github.com/pippellia-btc/nostr-web-tokens).
